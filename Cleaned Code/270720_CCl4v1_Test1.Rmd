@@ -1,0 +1,325 @@
+```{r}
+library(DoubletFinder)
+library(uwot)
+library(Seurat)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(RColorBrewer)
+
+
+getwd()
+```
+
+```{r}
+
+
+# Load datasets
+list.files("./Filtered\ Matrices/H-liver/")
+MLihealthy.data <- Read10X(data.dir = "./Filtered\ Matrices/H-liver/")
+MLihealthy <- CreateSeuratObject(counts = MLihealthy.data, project = "H-liver")
+
+MBhealthy.data <- Read10X(data.dir = "./Filtered\ Matrices/H-blood/")
+MBhealthy <- CreateSeuratObject(counts = MBhealthy.data, project = "H-blood")
+
+MLiCCl4.data <- Read10X(data.dir = "./Filtered\ Matrices/CCl4-liver/")
+MLiCCl4 <- CreateSeuratObject(counts = MLiCCl4.data, project = "CCl4-liver")
+
+MBCCl4.data <- Read10X(data.dir = "./Filtered\ Matrices/CCl4-blood/")
+MBCCl4 <- CreateSeuratObject(counts = MBCCl4.data, project = "CCl4-blood")
+
+# Set %mt
+
+MLihealthy[["percent.mt"]] <- PercentageFeatureSet(MLihealthy, pattern = "^mt-")
+MBhealthy[["percent.mt"]] <- PercentageFeatureSet(MBhealthy, pattern = "^mt-")
+MLiCCl4[["percent.mt"]] <- PercentageFeatureSet(MLiCCl4, pattern = "^mt-")
+MBCCl4[["percent.mt"]] <- PercentageFeatureSet(MBCCl4, pattern = "^mt-")
+
+# LogNorm, FS, Scale
+MLihealthy <- NormalizeData(MLihealthy, normalization.method = "LogNormalize", scale.factor = 10000)
+MLihealthy <- FindVariableFeatures(MLihealthy, selection.method = "vst", nfeatures = 2000)
+MLihealthy <- ScaleData(MLihealthy)
+
+MBhealthy <- NormalizeData(MBhealthy, normalization.method = "LogNormalize", scale.factor = 10000)
+MBhealthy <- FindVariableFeatures(MBhealthy, selection.method = "vst", nfeatures = 2000)
+MBhealthy <- ScaleData(MBhealthy)
+
+MLiCCl4 <- NormalizeData(MLiCCl4, normalization.method = "LogNormalize", scale.factor = 10000)
+MLiCCl4 <- FindVariableFeatures(MLiCCl4, selection.method = "vst", nfeatures = 2000)
+MLiCCl4 <- ScaleData(MLiCCl4)
+
+MBCCl4 <- NormalizeData(MBCCl4, normalization.method = "LogNormalize", scale.factor = 10000)
+MBCCl4 <- FindVariableFeatures(MBCCl4, selection.method = "vst", nfeatures = 2000)
+MBCCl4 <- ScaleData(MBCCl4)
+
+
+# PCA
+MLihealthy_PCA <- RunPCA(MLihealthy, features = VariableFeatures(object = MLihealthy))
+MBhealthy_PCA <- RunPCA(MBhealthy, features = VariableFeatures(object = MBhealthy))
+MLiCCl4_PCA <- RunPCA(MLiCCl4, features = VariableFeatures(object = MLiCCl4))
+MBCCl4_PCA <- RunPCA(MBCCl4, features = VariableFeatures(object = MBCCl4))
+
+# UMAP -> Use dims = 50 for now
+MLihealthy_PCA <- FindNeighbors(MLihealthy_PCA, dims = 1:50)
+MLihealthy_PCA <- FindClusters(MLihealthy_PCA, resolution = 1.0)
+MLihealthy_UMAP <- RunUMAP(MLihealthy_PCA, dims = 1:50)
+
+MBhealthy_PCA <- FindNeighbors(MBhealthy_PCA, dims = 1:50)
+MBhealthy_PCA <- FindClusters(MBhealthy_PCA, resolution = 1.0)
+MBhealthy_UMAP <- RunUMAP(MBhealthy_PCA, dims = 1:50)
+
+MLiCCl4_PCA <- FindNeighbors(MLiCCl4_PCA, dims = 1:50)
+MLiCCl4_PCA <- FindClusters(MLiCCl4_PCA, resolution = 1.0)
+MLiCCl4_UMAP <- RunUMAP(MLiCCl4_PCA, dims = 1:50)
+
+MBCCl4_PCA <- FindNeighbors(MBCCl4_PCA, dims = 1:50)
+MBCCl4_PCA <- FindClusters(MBCCl4_PCA, resolution = 1.0)
+MBCCl4_UMAP <- RunUMAP(MBCCl4_PCA, dims = 1:50)
+
+# set pk according to the pk plot
+MLihealthy_nExp_poi <- round(0.05*length(MLihealthy_UMAP$orig.ident))   ## Assuming 5% doublet formation rate(set your rate according to 10X manual)
+MBhealthy_nExp_poi <- round(0.05*length(MBhealthy_UMAP$orig.ident))
+MLiCCl4_nExp_poi <- round(0.05*length(MLiCCl4_UMAP$orig.ident))
+MBCCl4_nExp_poi <- round(0.05*length(MBCCl4_UMAP$orig.ident))
+```
+
+```{r echo=FALSE}
+
+# pK Identification (no ground-truth)
+#select pc according to elbow plot
+sweep.res.list_MLihealthy_UMAP <- paramSweep_v3(MLihealthy_UMAP, PCs = 1:50, sct = FALSE)
+sweep.stats_MLihealthy_UMAP <- summarizeSweep(sweep.res.list_MLihealthy_UMAP, GT = FALSE)
+bcmvn_MLihealthy_UMAP <- find.pK(sweep.stats_MLihealthy_UMAP)
+
+sweep.res.list_MBhealthy_UMAP <- paramSweep_v3(MBhealthy_UMAP, PCs = 1:50, sct = FALSE)
+sweep.stats_MBhealthy_UMAP <- summarizeSweep(sweep.res.list_MBhealthy_UMAP, GT = FALSE)
+bcmvn_MBhealthy_UMAP <- find.pK(sweep.stats_MBhealthy_UMAP)
+
+sweep.res.list_MLiCCl4_UMAP <- paramSweep_v3(MLiCCl4_UMAP, PCs = 1:50, sct = FALSE)
+sweep.stats_MLiCCl4_UMAP <- summarizeSweep(sweep.res.list_MLiCCl4_UMAP, GT = FALSE)
+bcmvn_MLiCCl4_UMAP <- find.pK(sweep.stats_MLiCCl4_UMAP)
+
+sweep.res.list_MBCCl4_UMAP <- paramSweep_v3(MBCCl4_UMAP, PCs = 1:50, sct = FALSE)
+sweep.stats_MBCCl4_UMAP <- summarizeSweep(sweep.res.list_MBCCl4_UMAP, GT = FALSE)
+bcmvn_MBCCl4_UMAP <- find.pK(sweep.stats_MBCCl4_UMAP)
+
+```
+
+```{r}
+
+# Doublet Finder
+MLihealthy_rmD <- doubletFinder_v3(MLihealthy_UMAP, PCs = 1:50, pN = 0.25, pK = 0.06, nExp = MLihealthy_nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+MBhealthy_rmD <- doubletFinder_v3(MBhealthy_UMAP, PCs = 1:50, pN = 0.25, pK = 0.06, nExp = MBhealthy_nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+MLiCCl4_rmD <- doubletFinder_v3(MLiCCl4_UMAP, PCs = 1:50, pN = 0.25, pK = 0.06, nExp = MLiCCl4_nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+MBCCl4_rmD <- doubletFinder_v3(MBCCl4_UMAP, PCs = 1:50, pN = 0.25, pK = 0.06, nExp = MBCCl4_nExp_poi, reuse.pANN = FALSE, sct = FALSE)
+
+
+# Make graphs - DF
+plot_MLihealthy_DF <- DimPlot(MLihealthy_rmD, reduction = "umap", group.by = "DF.classifications_0.25_0.06_138")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLihealthy_UMAP_DF.png", plot = plot_MLihealthy_DF, width = 30, units = "cm")
+
+plot_MBhealthy_DF <- DimPlot(MBhealthy_rmD, reduction = "umap", group.by = "DF.classifications_0.25_0.06_429")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBhealthy_UMAP_DF.png", plot = plot_MBhealthy_DF, width = 30, units = "cm")
+
+plot_MLiCCl4_DF <- DimPlot(MLiCCl4_rmD, reduction = "umap", group.by = "DF.classifications_0.25_0.06_86")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLiCCl4_UMAP_DF.png", plot = plot_MLiCCl4_DF, width = 30, units = "cm")
+
+plot_MBCCl4_DF <- DimPlot(MBCCl4_rmD, reduction = "umap",group.by = "DF.classifications_0.25_0.06_446")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBCCl4_UMAP_DF.png", plot = plot_MBCCl4_DF, width = 30, units = "cm")
+
+
+# Remove doublets
+MLihealthy_rmD <- subset(MLihealthy_rmD, subset = DF.classifications_0.25_0.06_138 =="Singlet")
+saveRDS(MLihealthy_rmD, file = "./Liver_CCl4-GH/Test1_Outputs/270720_MLihealthy_rmD.RDS")
+
+MBhealthy_rmD <- subset(MBhealthy_rmD, subset = DF.classifications_0.25_0.06_429 =="Singlet")
+saveRDS(MBhealthy_rmD, file = "./Liver_CCl4-GH/Test1_Outputs/270720_MBhealthy_rmD.RDS")
+
+MLiCCl4_rmD <- subset(MLiCCl4_rmD, subset = DF.classifications_0.25_0.06_86 =="Singlet")
+saveRDS(MLiCCl4_rmD, file = "./Liver_CCl4-GH/Test1_Outputs/270720_MLiCCl4_rmD.RDS")
+
+MBCCl4_rmD <- subset(MBCCl4_rmD, subset = DF.classifications_0.25_0.06_446 =="Singlet")
+saveRDS(MBCCl4_rmD, file = "./Liver_CCl4-GH/Test1_Outputs/270720_MBCCl4_rmD.RDS")
+
+# Make graphs - OG
+plot_MLihealthy_OG <- DimPlot(MLihealthy_UMAP, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLihealthy_UMAP_OG.png", plot = plot_MLihealthy_OG, width = 30, units = "cm")
+
+plot_MBhealthy_OG <- DimPlot(MBhealthy_UMAP, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBhealthy_UMAP_OG.png", plot = plot_MBhealthy_OG, width = 30, units = "cm")
+
+plot_MLiCCl4_OG <- DimPlot(MLiCCl4_UMAP, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLiCCl4_UMAP_OG.png", plot = plot_MLiCCl4_OG, width = 30, units = "cm")
+
+plot_MBCCl4_OG <- DimPlot(MBCCl4_UMAP, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBCCl4_UMAP_OG.png", plot = plot_MBCCl4_OG, width = 30, units = "cm")
+
+# Make graphs - rmD
+plot_MLihealthy_rmD_UMAP <- DimPlot(MLihealthy_rmD, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLihealthy_UMAP_rmD.png", plot = plot_MLihealthy_rmD_UMAP, width = 30, units = "cm")
+
+plot_MBhealthy_rmD_UMAP <- DimPlot(MBhealthy_rmD, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBhealthy_UMAP_rmD.png", plot = plot_MBhealthy_rmD_UMAP, width = 30, units = "cm")
+
+plot_MLiCCl4_rmD_UMAP <- DimPlot(MLiCCl4_rmD, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MLiCCl4_UMAP_rmD.png", plot = plot_MLiCCl4_rmD_UMAP, width = 30, units = "cm")
+
+plot_MBCCl4_rmD_UMAP <- DimPlot(MBCCl4_rmD, reduction = "umap")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_MBCCl4_UMAP_rmD.png", plot = plot_MBCCl4_rmD_UMAP, width = 30, units = "cm")
+
+#```
+
+#```{r}
+
+# Merge datasets
+CCl4t1 <- merge(MLihealthy_rmD, y = c(MBhealthy_rmD, MLiCCl4_rmD, MBCCl4_rmD), add.cell.ids = c("H-Liver", "H-blood", "CCl4-Liver", "CCl4-blood"), project = "CCl4t1") 
+unique(sapply(X = strsplit(colnames(CCl4t1), split = "_"), FUN = "[", 1))
+
+# set %mt
+CCl4t1[["percent.mt"]] <- PercentageFeatureSet(CCl4t1, pattern = "^mt-")
+
+# QC
+plot_QC_Vlnplot <- VlnPlot(CCl4t1, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "orig.ident")
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_QCviolin.png", plot = plot_QC_Vlnplot, width = 25, units = "cm")
+
+plot_QC_Scatter1 <- FeatureScatter(CCl4t1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "orig.ident")
+plot_QC_Scatter2 <- FeatureScatter(CCl4t1, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "orig.ident")
+plot_QC_Scatter <- plot_QC_Scatter1 + plot_QC_Scatter2
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_QCscatter.png", plot = plot_QC_Scatter, width = 25, units = "cm")
+
+#Filter cells 
+CCl4t1 <- subset(CCl4t1, subset = nFeature_RNA > 500 & percent.mt < 20)
+
+#Normalise
+CCl4t1 <-  NormalizeData(CCl4t1, normalization.method = "LogNormalize", scale.factor = 10000)
+
+#Feature Selection
+
+CCl4t1 <- FindVariableFeatures(CCl4t1, selection.method = "vst", nfeatures = 2000)
+CCl4t1_top15 <- head(VariableFeatures(CCl4t1), 15)
+Plot_FS_15 <- LabelPoints(plot = VariableFeaturePlot(CCl4t1), points = CCl4t1_top15, repel = TRUE)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FS15.png", plot = Plot_FS_15, width = 30, units = "cm")
+
+#Scale 
+CCl4t1 <- ScaleData(CCl4t1)
+
+```
+
+```{r}
+
+# Plot post-QC graphs
+
+plot_QC_Vlnplot <- VlnPlot(CCl4t1, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "orig.ident")
+ggsave("./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_postQCVln.png", plot = plot_QC_Vlnplot, width = 24, units ="cm")
+
+plot_QC_Scatter1 <- FeatureScatter(CCl4t1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "orig.ident")
+plot_QC_Scatter2 <- FeatureScatter(CCl4t1, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "orig.ident")
+plot_QC_Scatter <- plot_QC_Scatter1 + plot_QC_Scatter2
+ggsave("./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_postQCScatter.png", plot = plot_QC_Scatter, width = 24, units ="cm")
+
+#PCA
+CCl4t1 <- RunPCA(CCl4t1, features = VariableFeatures(object = CCl4t1))
+capture.output(print(CCl4t1[["pca"]], dims = 1:10, nfeatures = 5), file = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_PCA10.txt")
+
+saveRDS(CCl4t1, file = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_PCA.RDS")
+
+#n(PC) Plots
+png(file="./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_Heatmap18.jpeg", width = 30, height = 60, units = "cm", res = 800)
+DimHeatmap(CCl4t1, dims = 1:18, cells = 500, balanced = TRUE, ncol = 3)
+dev.off()
+
+png(file="./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_Heatmap36.jpeg", width = 30, height = 60, units = "cm", res = 800)
+DimHeatmap(CCl4t1, dims = 19:36, cells = 500, balanced = TRUE, ncol = 3)
+dev.off()
+
+png(file="./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_Heatmap50.jpeg", width = 30, height = 50, units = "cm", res = 800)
+DimHeatmap(CCl4t1, dims = 37:50, cells = 500, balanced = TRUE, ncol = 3)
+dev.off()
+
+plot_Elbow <- ElbowPlot(CCl4t1, ndims = 50)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_ElbowPlot.png", plot = plot_Elbow, width = 30, units = "cm")
+
+# ```
+# 
+# 
+# ```{r}
+
+# UMAP
+CCl4t1 <- FindNeighbors(CCl4t1, dims = 1:45)
+CCl4t1 <- FindClusters(CCl4t1, resolution = 1.00)
+CCl4t1 <- RunUMAP(CCl4t1, dims = 1:45)
+
+saveRDS(CCl4t1, file = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4test1_UMAP.RDS")
+
+plot_UMAP <- DimPlot(CCl4t1, reduction = "umap", group.by = "orig.ident")
+ggsave("./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_UMAPogid.png", plot = plot_UMAP)
+
+plot_UMAP_clusters <- DimPlot(CCl4t1, reduction = "umap", label = T)
+ggsave("./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_UMAPclusters.png", plot = plot_UMAP_clusters)
+
+
+# Marker Genes
+
+CCl4t1.markers <- FindAllMarkers(CCl4t1, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+CCl4t1.markersOUTPUT <- CCl4t1.markers %>% group_by(cluster) %>% arrange(pct.2, .by_group = T)
+write.csv(CCl4t1.markersOUTPUT, file = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_biomarkers.csv")
+
+
+
+Plot_FP_QCmetrics <- FeaturePlot(CCl4t1, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), pt.size = 0.2, ncol = 3) + scale_colour_gradientn(colours = rev(brewer.pal(n = 11, name = "RdYlBu")))
+ggsave("./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_QCFP.png", plot = Plot_FP_QCmetrics, width = 35, height = 15, units ="cm")
+
+
+# Plot big markers
+
+plot_MonoMacs <- FeaturePlot(CCl4t1, features = c("Csf1r", "Lyz2", "Itgam", "Cd68", "S100a8", "S100a4"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_MonoMacs.png", plot = plot_MonoMacs, width = 30, height = 22, units = "cm")
+
+plot_MonoLy6c <- FeaturePlot(CCl4t1, features = c("Ly6c2", "Ccr2", "Vcan", "Ace", "Treml4"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_MonoLy6c.png", plot = plot_MonoLy6c, width = 30, height = 22, units = "cm")
+
+plot_NeuTNKB <- FeaturePlot(CCl4t1, features = c("Ly6g", "Mpo", "Cd3d", "Cd3e", "Cd8a", "Cd4", "Klra9", "Klrb1b", "Gzma", "Cd79a", "Cd79b"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_NeuTNKB.png", plot = plot_NeuTNKB, width = 30, height = 44, units = "cm")
+
+plot_bloods_cDC <- FeaturePlot(CCl4t1, features = c("Fcer1a", "Il4", "Cpa3", "Kdr", "Pecam1", "Icam2", "Cdh5", "Hba-a1", "Hbb-a2", "Xcr1", "Cd209a", "Siglech"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_bloodsCDC.png", plot = plot_bloods_cDC, width = 30, height = 44, units = "cm")
+
+plot_MonoLy6cHi <- FeaturePlot(CCl4t1, features = c("Ly6c2", "Ccr2", "Vcan"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_MonoLy6cHIGH.png", plot = plot_MonoLy6cHi, width = 30, height = 11, units = "cm")
+
+plot_MonoLy6cLo <- FeaturePlot(CCl4t1, features = c("Ace", "Treml4"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_MonoLy6cLOW.png", plot = plot_MonoLy6cLo, width = 20, height = 11, units = "cm")
+
+plot_Neu <- FeaturePlot(CCl4t1, features = c("Ly6g", "Mpo"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_Neu.png", plot = plot_Neu, width = 20, height = 11, units = "cm")
+
+plot_T <- FeaturePlot(CCl4t1, features = c("Cd3d", "Cd3e", "Cd8a", "Cd4"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_T.png", plot = plot_T, width = 20, height = 22, units = "cm")
+
+plot_NK <- FeaturePlot(CCl4t1, features = c( "Klra9", "Klrb1b", "Gzma"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_NK.png", plot = plot_NK, width = 30, height = 11, units = "cm")
+
+plot_B <- FeaturePlot(CCl4t1, features = c("Cd79a", "Cd79b"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_B.png", plot = plot_B, width = 30, height = 11, units = "cm")
+
+plot_DC <- FeaturePlot(CCl4t1, features = c("Xcr1", "Cd209a", "Siglech"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_DC.png", plot = plot_DC, width = 30, height = 11, units = "cm")
+
+plot_baso <- FeaturePlot(CCl4t1, features = c("Fcer1a", "Il4", "Cpa3"), ncol = 3, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_baso.png", plot = plot_baso, width = 30, height = 11, units = "cm")
+
+plot_EC <- FeaturePlot(CCl4t1, features = c("Kdr", "Pecam1", "Icam2", "Cdh5"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_EC.png", plot = plot_EC, width = 20, height = 22, units = "cm")
+
+plot_HBC <- FeaturePlot(CCl4t1, features = c("Hba-a1", "Hbb-a2"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_HBC.png", plot = plot_HBC, width = 20, height = 11, units = "cm")
+
+plot_Macro <- FeaturePlot(CCl4t1, features = c("Mmp12", "Ccl12" , "Mgl2", "Pf4"), ncol = 2, pt.size = 0.4)
+ggsave(filename = "./Liver_CCl4-GH/Test1_Outputs/270720_CCl4t1_FP_Macro.png", plot = plot_Macro, width = 20, height = 22, units = "cm")
+
+
+
+```
+
+
+
