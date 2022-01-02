@@ -1,0 +1,46 @@
+```{r}
+library(uwot)
+library(Seurat)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(RColorBrewer)
+library(harmony)
+library(cowplot)
+
+date.1 <- "190820"
+harmony.path <-  "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Merge/"
+getwd()
+```
+
+```{r}
+
+har_trial <- readRDS(paste0(harmony.path, "120820_preRH_Test2_PCA.RDS")
+
+
+v <- c("orig.ident", "Tissue", "Injury", "Experiment", "Injury.type", "Condition")
+for (v in group.by.vars){
+har_trial <- RunUMAP(har_trial, group.by.vars = v)
+
+har_UMAP_cl <- DimPlot(har_trial, reduction = "umap", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPcl.png"), plot = har_UMAP_cl, width = 30, units = "cm")
+
+har_UMAP_cond <- DimPlot(har_trial, reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPCond.png"), plot = har_UMAP_cond, width = 40, units = "cm")
+
+har_UMAP_condmA5 <- DimPlot(subset(har_trial, subset = Experiment == "Kidney.UUO"), reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPCond_UUO.png"), plot = har_UMAP_condmA5, width = 40, units = "cm")
+
+har_UMAP_condBleo <- DimPlot(subset(har_trial, subset = Experiment == "Lung.Bleo"), reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPCond_Bleo.png"), plot = har_UMAP_condBleo, width = 40, units = "cm")
+
+har_UMAP_condBDL <- DimPlot(subset(har_trial, subset = Experiment == "Liver.BDL"), reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPCond_BDL.png"), plot = har_UMAP_condBDL, width = 40, units = "cm")
+
+har_UMAP_condCCl4 <- DimPlot(subset(har_trial, subset = Experiment == "Liver.CCl4"), reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(merge.path, "Para_Trials/", date.1, "_harPara_", v, "_UMAPCond_CCl4.png"), plot = har_UMAP_condCCl4, width = 40, units = "cm")
+
+}
+```
+
+

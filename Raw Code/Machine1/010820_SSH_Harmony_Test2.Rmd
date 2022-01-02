@@ -1,0 +1,1129 @@
+```{r}
+# Load required Libraries
+
+library(uwot)
+library(Seurat)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(RColorBrewer)
+library(harmony)
+library(cowplot)
+library(data.table)
+
+#Set paths
+
+mA5.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Kidney-UUO/"
+Bleo2.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Lung-Bleo/"
+BDL2.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-BDL/"
+CCl4.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-CCl4/"
+
+mA5Output.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Kidney-UUO/Outputs/"
+Bleo2Output.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Lung-Bleo/Outputs/"
+BDL2Output.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-BDL/Outputs/"
+CCl4Output.path  <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-CCl4/Outputs/"
+
+#Set date
+
+Today.date <- "070820" 
+
+# Set colour palettes
+
+mA5.colpal <- c("#CA9858",	"#FF7F00",	"#C8828D",	"#FFCA62")
+
+Bleo2.colpal <- c("#9683B0",	"#6A3D9A",	"#C8828D",	"#DA98D6")
+
+BDL2.colpal <- c("#8EB26E",	"#88BCB2",	"#33A02C",	"#00CDB3",	"#C8828D",	"#F4A1AF",	"#B2DF8A",	"#AFF1E1")
+
+CCl4.colpal <- c("#74909E",	"#167EDB",	"#C8828D",	"#A6CEE3")
+
+```
+
+```{r}
+# Load rmD Datasets -> Label as [Exp]_[H/Fibr]_[Tissue]
+
+setwd(paste0(mA5.path, "rmDfiles/"))
+mA5_H_Kidney <- readRDS("./170720_MKhealthy_rmD.RDS")
+mA5_H_Blood <- readRDS("./170720_MBhealthy_rmD.RDS")
+mA5_Fib_Kidney <- readRDS("./170720_MKUUO_rmD.RDS")
+mA5_Fib_Blood <- readRDS("./170720_MBUUO_rmD.RDS")
+
+
+setwd(paste0(Bleo2.path, "rmDfiles/"))
+Bleo2_H_Lung <- readRDS("./160720_MLhealthy_rmD.RDS")
+Bleo2_H_Blood <- readRDS("./160720_MBhealthy_rmD.RDS")
+Bleo2_Fib_Lung <- readRDS("./160720_MLbleo_rmD.RDS")
+Bleo2_Fib_Blood <- readRDS("./160720_MBbleo_rmD.RDS")
+
+setwd(paste0(BDL2.path, "rmDfiles/"))
+BDL2_H_Liver_A <- readRDS("./170720_MLiHealthy_A_rmD.RDS")
+BDL2_H_Liver_B <- readRDS("./170720_MLiHealthy_B_rmD.RDS")
+
+BDL2_H_Blood_A <- readRDS("./170720_MBHealthy_A_rmD.RDS")
+BDL2_H_Blood_B <- readRDS("./170720_MBHealthy_B_rmD.RDS")
+
+BDL2_Fib_Liver_A <- readRDS("./170720_MLiBDL_A_rmD.RDS")
+BDL2_Fib_Liver_B <- readRDS("./170720_MLiBDL_B_rmD.RDS")
+
+BDL2_Fib_Blood_A <- readRDS("./170720_MBBDL_A_rmD.RDS")
+BDL2_Fib_Blood_B <- readRDS("./170720_MBBDL_B_rmD.RDS")
+
+
+setwd(paste0(CCl4.path, "rmDfiles/"))
+CCl4_H_Liver <- readRDS("./270720_MLihealthy_rmD.RDS")
+CCl4_H_Blood <- readRDS("./270720_MBhealthy_rmD.RDS")
+CCl4_Fib_Liver <- readRDS("./270720_MLiCCl4_rmD.RDS")
+CCl4_Fib_Blood <- readRDS("./270720_MBCCl4_rmD.RDS")
+
+# Label Datasets in metadata - Tissue (Blood/Kidney/Lung/Liver)
+#H-Blood$--- <- "----"
+
+#-
+mA5_H_Kidney$Tissue <- "Kidney"
+mA5_H_Blood$Tissue <- "Blood"
+mA5_Fib_Kidney$Tissue <- "Kidney"
+mA5_Fib_Blood$Tissue <- "Blood"
+#-
+Bleo2_H_Lung$Tissue <- "Lung"
+Bleo2_H_Blood$Tissue <- "Blood"
+Bleo2_Fib_Lung$Tissue <- "Lung"
+Bleo2_Fib_Blood$Tissue <- "Blood"
+#-
+BDL2_H_Liver_A$Tissue <- "Liver"
+BDL2_H_Liver_B$Tissue <- "Liver"
+
+BDL2_H_Blood_A$Tissue <- "Blood"
+BDL2_H_Blood_B$Tissue <- "Blood"
+
+BDL2_Fib_Liver_A$Tissue <- "Liver"
+BDL2_Fib_Liver_B$Tissue <- "Liver"
+
+BDL2_Fib_Blood_A$Tissue <- "Blood"
+BDL2_Fib_Blood_B$Tissue <- "Blood"
+#-
+CCl4_H_Liver$Tissue <- "Liver"
+CCl4_H_Blood$Tissue <- "Blood"
+CCl4_Fib_Liver$Tissue <- "Liver"
+CCl4_Fib_Blood$Tissue <- "Blood"
+
+# Label Datasets in metadata - Injury (Healthy, UUO, Bleo, BDL, CCl4)
+
+mA5_H_Kidney$Injury <- "Healthy"
+mA5_H_Blood$Injury <- "Healthy"
+mA5_Fib_Kidney$Injury <- "UUO"
+mA5_Fib_Blood$Injury <- "UUO"
+#-
+Bleo2_H_Lung$Injury <- "Healthy"
+Bleo2_H_Blood$Injury <- "Healthy"
+Bleo2_Fib_Lung$Injury <- "Bleo"
+Bleo2_Fib_Blood$Injury <- "Bleo"
+#-
+BDL2_H_Liver_A$Injury <- "Healthy"
+BDL2_H_Liver_B$Injury <- "Healthy"
+
+BDL2_H_Blood_A$Injury <- "Healthy"
+BDL2_H_Blood_B$Injury <- "Healthy"
+
+BDL2_Fib_Liver_A$Injury <- "BDL"
+BDL2_Fib_Liver_B$Injury <- "BDL"
+
+BDL2_Fib_Blood_A$Injury <- "BDL"
+BDL2_Fib_Blood_B$Injury <- "BDL"
+#-
+CCl4_H_Liver$Injury <- "Healthy"
+CCl4_H_Blood$Injury <- "Healthy"
+CCl4_Fib_Liver$Injury <- "CCl4"
+CCl4_Fib_Blood$Injury <- "CCl4"
+
+
+# Label Datasets in metadata - Experiment (Kidney.UUO, Lung.Bleo, Liver.BDL, Liver.CCl4)
+
+mA5_H_Kidney$Experiment <- "Kidney.UUO"
+mA5_H_Blood$Experiment <- "Kidney.UUO"
+mA5_Fib_Kidney$Experiment <- "Kidney.UUO"
+mA5_Fib_Blood$Experiment <- "Kidney.UUO"
+
+#-
+Bleo2_H_Lung$Experiment <- "Lung.Bleo"
+Bleo2_H_Blood$Experiment <- "Lung.Bleo"
+Bleo2_Fib_Lung$Experiment <- "Lung.Bleo"
+Bleo2_Fib_Blood$Experiment <- "Lung.Bleo"
+
+#-
+BDL2_H_Liver_A$Experiment <- "Liver.BDL"
+BDL2_H_Liver_B$Experiment <- "Liver.BDL"
+
+BDL2_H_Blood_A$Experiment <- "Liver.BDL"
+BDL2_H_Blood_B$Experiment <- "Liver.BDL"
+
+BDL2_Fib_Liver_A$Experiment <- "Liver.BDL"
+BDL2_Fib_Liver_B$Experiment <- "Liver.BDL"
+
+BDL2_Fib_Blood_A$Experiment <- "Liver.BDL"
+BDL2_Fib_Blood_B$Experiment <- "Liver.BDL"
+
+#-
+CCl4_H_Liver$Experiment <- "Liver.CCl4"
+CCl4_H_Blood$Experiment <- "Liver.CCl4"
+CCl4_Fib_Liver$Experiment <- "Liver.CCl4"
+CCl4_Fib_Blood$Experiment <- "Liver.CCl4"
+
+# Label n(Exp) -> 0 for everything apart from BDL-A(1) and BDL-B (2)
+
+mA5_H_Kidney$nExp <- "0"
+mA5_H_Blood$nExp <- "0"
+mA5_Fib_Kidney$nExp <- "0"
+mA5_Fib_Blood$nExp <- "0"
+
+#-
+Bleo2_H_Lung$nExp <- "0"
+Bleo2_H_Blood$nExp <- "0"
+Bleo2_Fib_Lung$nExp <- "0"
+Bleo2_Fib_Blood$nExp <- "0"
+
+#-
+BDL2_H_Liver_A$nExp <- "1"
+BDL2_H_Liver_B$nExp <- "2"
+
+BDL2_H_Blood_A$nExp <- "1"
+BDL2_H_Blood_B$nExp <- "2"
+
+BDL2_Fib_Liver_A$nExp <- "1"
+BDL2_Fib_Liver_B$nExp <- "2"
+
+BDL2_Fib_Blood_A$nExp <- "1"
+BDL2_Fib_Blood_B$nExp <- "2"
+
+#-
+CCl4_H_Liver$nExp <- "0"
+CCl4_H_Blood$nExp <- "0"
+CCl4_Fib_Liver$nExp <- "0"
+CCl4_Fib_Blood$nExp <- "0"
+
+# Label Datasets in metadata - Injury type (Healthy, Surgery-Induced, Toxin-Induced)
+
+mA5_H_Kidney$Injury.type <- "Healthy"
+mA5_H_Blood$Injury.type <- "Healthy"
+mA5_Fib_Kidney$Injury.type <- "Surgery"
+mA5_Fib_Blood$Injury.type <- "Surgery"
+
+#-
+Bleo2_H_Lung$Injury.type <- "Healthy"
+Bleo2_H_Blood$Injury.type <- "Healthy"
+Bleo2_Fib_Lung$Injury.type <- "Toxin"
+Bleo2_Fib_Blood$Injury.type <- "Toxin"
+
+#-
+BDL2_H_Liver_A$Injury.type <- "Healthy"
+BDL2_H_Liver_B$Injury.type <- "Healthy"
+
+BDL2_H_Blood_A$Injury.type <- "Healthy"
+BDL2_H_Blood_B$Injury.type <- "Healthy"
+
+BDL2_Fib_Liver_A$Injury.type <- "Surgery"
+BDL2_Fib_Liver_B$Injury.type <- "Surgery"
+
+BDL2_Fib_Blood_A$Injury.type <- "Surgery"
+BDL2_Fib_Blood_B$Injury.type <- "Surgery"
+
+#-
+CCl4_H_Liver$Injury.type <- "Healthy"
+CCl4_H_Blood$Injury.type <- "Healthy"
+CCl4_Fib_Liver$Injury.type <- "Toxin"
+CCl4_Fib_Blood$Injury.type <- "Toxin"
+
+# Label Datasets in metadata - Condition (Healthy V Fibrotic)
+
+mA5_H_Kidney$Condition <- "Healthy"
+mA5_H_Blood$Condition <- "Healthy"
+mA5_Fib_Kidney$Condition <- "Fibrotic"
+mA5_Fib_Blood$Condition <- "Fibrotic"
+
+#-
+Bleo2_H_Lung$Condition <- "Healthy"
+Bleo2_H_Blood$Condition <- "Healthy"
+Bleo2_Fib_Lung$Condition <- "Fibrotic"
+Bleo2_Fib_Blood$Condition <- "Fibrotic"
+
+#-
+BDL2_H_Liver_A$Condition <- "Healthy"
+BDL2_H_Liver_B$Condition <- "Healthy"
+
+BDL2_H_Blood_A$Condition <- "Healthy"
+BDL2_H_Blood_B$Condition <- "Healthy"
+
+BDL2_Fib_Liver_A$Condition <- "Fibrotic"
+BDL2_Fib_Liver_B$Condition <- "Fibrotic"
+
+BDL2_Fib_Blood_A$Condition <- "Fibrotic"
+BDL2_Fib_Blood_B$Condition <- "Fibrotic"
+
+#-
+CCl4_H_Liver$Condition <- "Healthy"
+CCl4_H_Blood$Condition <- "Healthy"
+CCl4_Fib_Liver$Condition <- "Fibrotic"
+CCl4_Fib_Blood$Condition <- "Fibrotic"
+
+# Label Datasets in metadata - Duplicates (0 = False, 1 = True)
+
+mA5_H_Kidney$Duplicate <- "0"
+mA5_H_Blood$Duplicate <- "0"
+mA5_Fib_Kidney$Duplicate <- "0"
+mA5_Fib_Blood$Duplicate <- "0"
+
+#-
+Bleo2_H_Lung$Duplicate <- "0"
+Bleo2_H_Blood$Duplicate <- "1"
+Bleo2_Fib_Lung$Duplicate <- "0"
+Bleo2_Fib_Blood$Duplicate <- "0"
+
+#-
+BDL2_H_Liver_A$Duplicate <- "0"
+BDL2_H_Liver_B$Duplicate <- "0"
+
+BDL2_H_Blood_A$Duplicate <- "0"
+BDL2_H_Blood_B$Duplicate <- "0"
+
+BDL2_Fib_Liver_A$Duplicate <- "0"
+BDL2_Fib_Liver_B$Duplicate <- "0"
+
+BDL2_Fib_Blood_A$Duplicate <- "0"
+BDL2_Fib_Blood_B$Duplicate <- "0"
+
+#-
+CCl4_H_Liver$Duplicate <- "0"
+CCl4_H_Blood$Duplicate <- "1"
+CCl4_Fib_Liver$Duplicate <- "0"
+CCl4_Fib_Blood$Duplicate <- "0"
+
+# Label Datasets in metadata - Names
+
+mA5_H_Kidney$Names <- "H-Kidney"
+mA5_H_Blood$Names <- "H-Blood"
+mA5_Fib_Kidney$Names <- "UUO-Kidney"
+mA5_Fib_Blood$Names <- "UUO-Blood"
+
+#-
+Bleo2_H_Lung$Names <- "H-Lung"
+Bleo2_H_Blood$Names <- "H-Blood"
+Bleo2_Fib_Lung$Names <- "Bleo-Lung"
+Bleo2_Fib_Blood$Names <- "Bleo-Blood"
+
+#-
+BDL2_H_Liver_A$Names <- "H-Liver-A"
+BDL2_H_Liver_B$Names <- "H-Liver-B"
+
+BDL2_H_Blood_A$Names <- "H-Blood-A"
+BDL2_H_Blood_B$Names <- "H-Blood-B"
+
+BDL2_Fib_Liver_A$Names <- "BDL-Liver-A"
+BDL2_Fib_Liver_B$Names <- "BDL-Liver-B"
+
+BDL2_Fib_Blood_A$Names <- "BDL-Blood-A"
+BDL2_Fib_Blood_B$Names <- "BDL-Blood-B"
+
+#-
+CCl4_H_Liver$Names <- "H-Liver"
+CCl4_H_Blood$Names <- "H-Blood"
+CCl4_Fib_Liver$Names <- "CCl4-Liver"
+CCl4_Fib_Blood$Names <- "CCl4-Blood"
+```
+# Individual datasets by Experiment, set %mt, QC etc. up to UMAP
+```{R}
+
+# Merge Datasets by Exp + Save
+
+mA5 <- merge(mA5_H_Kidney, y = c(mA5_H_Blood, mA5_Fib_Kidney, mA5_Fib_Blood), add.cell.ids = c("H-Kidney", "H-Blood", "UUO-Kidney", "UUO-Blood"), project = "mA5") 
+saveRDS(mA5, file = paste0(mA5.path, Today.date, "_mA5_METADATA.RDS"))
+
+Bleo2 <- merge(Bleo2_H_Lung, y = c(Bleo2_H_Blood, Bleo2_Fib_Lung, Bleo2_Fib_Blood), add.cell.ids = c("H-Lung", "H-Blood", "Bleo-Lung", "Bleo-Blood"), project = "Bleo2") 
+saveRDS(Bleo2, file = paste0(Bleo2.path, Today.date, "_Bleo2_METADATA.RDS"))
+
+BDL2 <- merge(BDL2_H_Liver_A, y = c(BDL2_H_Liver_B, BDL2_H_Blood_A, BDL2_H_Blood_B, BDL2_Fib_Liver_A, BDL2_Fib_Liver_B, BDL2_Fib_Blood_A, BDL2_Fib_Blood_B), add.cell.ids = c("H-Liver-A", "H-Liver-B", "H-Blood-A", "H-Blood-B", "BDL-Liver-A", "BDL-Liver-B",  "BDL-Blood-A",  "BDL-Blood-B"), project = "BDL2") 
+saveRDS(BDL2, file = paste0(BDL2.path, Today.date, "_BDL2_METADATA.RDS"))
+
+CCl4 <- merge(CCl4_H_Liver, y = c(CCl4_H_Blood, CCl4_Fib_Liver,CCl4_Fib_Blood), add.cell.ids = c("H-Liver", "H-Blood", "CCl4-Liver", "CCl4-Blood"), project = "CCl4") 
+saveRDS(CCl4, file = paste0(CCl4.path, Today.date, "_CCl4_METADATA.RDS"))
+
+# Set colour palettes
+
+mA5.colpal <- c("#CA9858",	"#FF7F00",	"#C8828D",	"#FFCA62")
+
+Bleo2.colpal <- c("#9683B0",	"#6A3D9A",	"#C8828D",	"#DA98D6")
+
+BDL2.colpal <- c("#8EB26E",	"#88BCB2",	"#33A02C",	"#00CDB3",	"#C8828D",	"#F4A1AF",	"#B2DF8A",	"#AFF1E1")
+
+CCl4.colpal <- c("#74909E",	"#167EDB",	"#C8828D",	"#A6CEE3")
+
+# set legend order
+
+mA5$Names <- factor(mA5$Names, levels = c("UUO-Blood", "UUO-Kidney", "H-Blood", "H-Kidney"))
+
+# Set %mt
+mA5[["percent.mt"]] <- PercentageFeatureSet(mA5, pattern = "^mt-")
+
+Bleo2[["percent.mt"]] <- PercentageFeatureSet(Bleo2, pattern = "^mt-")
+
+BDL2[["percent.mt"]] <- PercentageFeatureSet(BDL2, pattern = "^mt-")
+
+CCl4[["percent.mt"]] <- PercentageFeatureSet(CCl4, pattern = "^mt-")
+
+#Pre-QC plots
+setwd(mA5Output.path)
+mA5_preQC_Vlnplot <- VlnPlot(mA5, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = mA5.colpal)
+ggsave(filename = paste0("./",Today.date, "_preQCviolin.png"), plot = mA5_preQC_Vlnplot, width = 30, units = "cm")
+
+mA5_preQC_Scatter1 <- FeatureScatter(mA5, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = mA5.colpal)
+mA5_preQC_Scatter2 <- FeatureScatter(mA5, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = mA5.colpal)
+mA5_preQC_Scatter <- mA5_preQC_Scatter1 + mA5_preQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_mA5_preQCscatter.png"), plot = mA5_preQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(Bleo2Output.path)
+Bleo2_preQC_Vlnplot <- VlnPlot(Bleo2, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = Bleo2.colpal)
+ggsave(filename = paste0("./",Today.date, "_Bleo2_preQCviolin.png"), plot = Bleo2_preQC_Vlnplot, width = 30, units = "cm")
+
+Bleo2_preQC_Scatter1 <- FeatureScatter(Bleo2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = Bleo2.colpal)
+Bleo2_preQC_Scatter2 <- FeatureScatter(Bleo2, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = Bleo2.colpal)
+Bleo2_preQC_Scatter <- Bleo2_preQC_Scatter1 + Bleo2_preQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_Bleo2_preQCscatter.png"), plot = Bleo2_preQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(BDL2Output.path)
+BDL2_preQC_Vlnplot <- VlnPlot(BDL2, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = BDL2.colpal)
+ggsave(filename = paste0("./", Today.date, "_BDL2_preQCviolin.png"), plot = BDL2_preQC_Vlnplot, width = 30, units = "cm")
+
+BDL2_preQC_Scatter1 <- FeatureScatter(BDL2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = BDL2.colpal)
+BDL2_preQC_Scatter2 <- FeatureScatter(BDL2, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = BDL2.colpal)
+BDL2_preQC_Scatter <- BDL2_preQC_Scatter1 + BDL2_preQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_BDL2_preQCscatter.png"), plot = BDL2_preQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(CCl4Output.path)
+CCl4_preQC_Vlnplot <- VlnPlot(CCl4, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = CCl4.colpal)
+ggsave(filename = paste0("./",Today.date, "_CCl4_preQCviolin.png"), plot = CCl4_preQC_Vlnplot, width = 30, units = "cm")
+
+CCl4_preQC_Scatter1 <- FeatureScatter(CCl4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = CCl4.colpal)
+CCl4_preQC_Scatter2 <- FeatureScatter(CCl4, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = CCl4.colpal)
+CCl4_preQC_Scatter <- CCl4_preQC_Scatter1 + CCl4_preQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_CCl4_preQCscatter.png"), plot = CCl4_preQC_Scatter, width = 30, units = "cm")
+
+# QCs -> nFeature.RNA = 500, mt% = 20%
+
+mA5 <- subset(mA5, subset = nFeature_RNA > 500 & percent.mt < 20)
+
+Bleo2 <- subset(Bleo2, subset = nFeature_RNA > 500 & percent.mt < 20)
+
+BDL2 <- subset(BDL2, subset = nFeature_RNA > 500 & percent.mt < 20)
+
+CCl4 <- subset(CCl4, subset = nFeature_RNA > 500 & percent.mt < 20)
+
+#Post-QC plots
+setwd(mA5Output.path)
+mA5_postQC_Vlnplot <- VlnPlot(mA5, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = mA5.colpal)
+ggsave(filename = paste0("./",Today.date, "_mA5_postQCviolin.png"), plot = mA5_postQC_Vlnplot, width = 30, units = "cm")
+
+mA5_postQC_Scatter1 <- FeatureScatter(mA5, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = mA5.colpal)
+mA5_postQC_Scatter2 <- FeatureScatter(mA5, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = mA5.colpal)
+mA5_postQC_Scatter <- mA5_postQC_Scatter1 + mA5_postQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_mA5_postQCscatter.png"), plot = mA5_postQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(Bleo2Output.path)
+Bleo2_postQC_Vlnplot <- VlnPlot(Bleo2, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = Bleo2.colpal)
+ggsave(filename = paste0("./",Today.date, "_Bleo2_postQCviolin.png"), plot = Bleo2_postQC_Vlnplot, width = 30, units = "cm")
+
+Bleo2_postQC_Scatter1 <- FeatureScatter(Bleo2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = Bleo2.colpal)
+Bleo2_postQC_Scatter2 <- FeatureScatter(Bleo2, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = Bleo2.colpal)
+Bleo2_postQC_Scatter <- Bleo2_postQC_Scatter1 + Bleo2_postQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_Bleo2_postQCscatter.png"), plot = Bleo2_postQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(BDL2Output.path)
+BDL2_postQC_Vlnplot <- VlnPlot(BDL2, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = BDL2.colpal)
+ggsave(filename = paste0("./",Today.date, "_BDL2_postQCviolin.png"), plot = BDL2_postQC_Vlnplot, width = 30, units = "cm")
+
+BDL2_postQC_Scatter1 <- FeatureScatter(BDL2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = BDL2.colpal)
+BDL2_postQC_Scatter2 <- FeatureScatter(BDL2, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = BDL2.colpal)
+BDL2_postQC_Scatter <- BDL2_postQC_Scatter1 + BDL2_postQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_BDL2_postQCscatter.png"), plot = BDL2_postQC_Scatter, width = 30, units = "cm")
+
+#-
+setwd(CCl4Output.path)
+CCl4_postQC_Vlnplot <- VlnPlot(CCl4, features= c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3, group.by = "Names", cols = CCl4.colpal)
+ggsave(filename = paste0("./",Today.date, "_CCl4_postQCviolin.png"), plot = CCl4_postQC_Vlnplot, width = 30, units = "cm")
+
+CCl4_postQC_Scatter1 <- FeatureScatter(CCl4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "Names", cols = CCl4.colpal)
+CCl4_postQC_Scatter2 <- FeatureScatter(CCl4, feature1 = "nCount_RNA", feature2 = "percent.mt", group.by = "Names", cols = CCl4.colpal)
+CCl4_postQC_Scatter <- CCl4_postQC_Scatter1 + CCl4_postQC_Scatter2
+ggsave(filename = paste0("./",Today.date, "_CCl4_postQCscatter.png"), plot = CCl4_postQC_Scatter, width = 30, units = "cm")
+
+# LogNorm, Feature Selection, Scale
+
+mA5 <-  NormalizeData(mA5, normalization.method = "LogNormalize", scale.factor = 10000)
+mA5 <- FindVariableFeatures(mA5, selection.method = "vst", nfeatures = 2000)
+mA5 <- ScaleData(mA5)
+
+Bleo2 <-  NormalizeData(Bleo2, normalization.method = "LogNormalize", scale.factor = 10000)
+Bleo2 <- FindVariableFeatures(Bleo2, selection.method = "vst", nfeatures = 2000)
+Bleo2 <- ScaleData(Bleo2)
+
+
+BDL2 <-  NormalizeData(BDL2, normalization.method = "LogNormalize", scale.factor = 10000)
+BDL2 <- FindVariableFeatures(BDL2, selection.method = "vst", nfeatures = 2000)
+BDL2 <- ScaleData(BDL2)
+
+CCl4 <-  NormalizeData(CCl4, normalization.method = "LogNormalize", scale.factor = 10000)
+CCl4 <- FindVariableFeatures(CCl4, selection.method = "vst", nfeatures = 2000)
+CCl4 <- ScaleData(CCl4)
+
+
+# PCA + Save
+mA5 <- RunPCA(mA5, features = VariableFeatures(object = mA5))
+saveRDS(mA5, file = paste0(mA5.path,Today.date, "_mA5_METADATA_PCA.RDS"))
+
+Bleo2 <- RunPCA(Bleo2, features = VariableFeatures(object = Bleo2))
+saveRDS(Bleo2, file = paste0(Bleo2.path,Today.date, "_Bleo2_METADATA_PCA.RDS"))
+
+BDL2 <- RunPCA(BDL2, features = VariableFeatures(object = BDL2))
+saveRDS(BDL2, file = paste0(BDL2.path,Today.date, "_BDL2_METADATA_PCA.RDS"))
+
+CCl4 <- RunPCA(CCl4, features = VariableFeatures(object = CCl4))
+saveRDS(CCl4, file = paste0(CCl4.path,Today.date, "_CCl4_METADATA_PCA.RDS"))
+
+# Elbow Plot
+mA5_Elbow <- ElbowPlot(mA5, ndims = 50)
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_METADATA_ElbowPlot.png"), plot = mA5_Elbow, width = 30, units = "cm")
+
+Bleo2_Elbow <- ElbowPlot(Bleo2, ndims = 50)
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_METADATA_ElbowPlot.png"), plot = Bleo2_Elbow, width = 30, units = "cm")
+
+BDL2_Elbow <- ElbowPlot(BDL2, ndims = 50)
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2_METADATA_ElbowPlot.png"), plot = BDL2_Elbow, width = 30, units = "cm")
+
+CCl4_Elbow <- ElbowPlot(CCl4, ndims = 50)
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_METADATA_ElbowPlot.png"), plot = CCl4_Elbow, width = 30, units = "cm")
+
+
+# UMAP -> Dims = 45 + Save
+
+mA5 <- FindNeighbors(mA5, dims = 1:45)
+mA5 <- FindClusters(mA5, resolution = 1.00)
+mA5 <- RunUMAP(mA5, dims = 1:45)
+mA5_UMAP_OGID <- DimPlot(mA5, reduction = "umap", group.by = "Names", cols = mA5.colpal)
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_METADATA_UMAP_OGID.png"), plot = mA5_UMAP_OGID, width = 30, units = "cm")
+mA5_UMAP_cl <- DimPlot(mA5, reduction = "umap", label = T)
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_METADATA_UMAP_cl.png"), plot = mA5_UMAP_cl, width = 30, units = "cm")
+saveRDS(mA5, file = paste0(mA5.path, Today.date, "_mA5_UMAP.RDS"))
+
+#-
+Bleo2 <- FindNeighbors(Bleo2, dims = 1:45)
+Bleo2 <- FindClusters(Bleo2, resolution = 1.00)
+Bleo2 <- RunUMAP(Bleo2, dims = 1:45)
+Bleo2_UMAP_OGID <- DimPlot(Bleo2, reduction = "umap", group.by = "Names", cols = Bleo2.colpal)
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_METADATA_UMAP_OGID.png"), plot = Bleo2_UMAP_OGID, width = 30, units = "cm")
+Bleo2_UMAP_cl <- DimPlot(Bleo2, reduction = "umap", label = T)
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_METADATA_UMAP_cl.png"), plot = Bleo2_UMAP_cl, width = 30, units = "cm")
+saveRDS(Bleo2, file = paste0(Bleo2.path, Today.date, "_Bleo2_UMAP.RDS"))
+
+#-
+BDL2 <- FindNeighbors(BDL2, dims = 1:45)
+BDL2 <- FindClusters(BDL2, resolution = 1.25)
+BDL2 <- RunUMAP(BDL2, dims = 1:45)
+BDL2_UMAP_OGID <- DimPlot(BDL2, reduction = "umap", group.by = "Names", cols = BDL2.colpal)
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2_METADATA_UMAP_OGID.png"), plot = BDL2_UMAP_OGID, width = 30, units = "cm")
+BDL2_UMAP_cl <- DimPlot(BDL2, reduction = "umap", label = T)
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2_METADATA_UMAP_cl.png"), plot = BDL2_UMAP_cl, width = 30, units = "cm")
+saveRDS(BDL2, file = paste0(BDL2.path, Today.date, "_BDL2_UMAP.RDS"))
+
+#-
+CCl4 <- FindNeighbors(CCl4, dims = 1:45)
+CCl4 <- FindClusters(CCl4, resolution = 1.00)
+CCl4 <- RunUMAP(CCl4, dims = 1:45)
+CCl4_UMAP_OGID <- DimPlot(CCl4, reduction = "umap", group.by = "Names", cols = CCl4.colpal)
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_METADATA_UMAP_OGID.png"), plot = CCl4_UMAP_OGID, width = 30, units = "cm")
+CCl4_UMAP_cl <- DimPlot(CCl4, reduction = "umap", label = T)
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_METADATA_UMAP_cl.png"), plot = CCl4_UMAP_cl, width = 30, units = "cm")
+saveRDS(CCl4, file = paste0(CCl4.path, Today.date, "_CCl4_UMAP.RDS"))
+```
+
+# Find Markers
+```{r}
+# Markers
+mA5.markers <- FindAllMarkers(mA5, only.pos = T, min.pct = 0.25, logfc.threshold = 0.25)
+# mA5.markersOUTPUT <- mA5.markers %>% group_by(cluster) %>% arrange(cluster, pct.2) 
+write.csv(mA5.markers, file = paste0(mA5Output.path, Today.date, "_mA5_ALLmarkers.csv"))
+
+Bleo2.markers <- FindAllMarkers(Bleo2, only.pos = T, min.pct = 0.25, logfc.threshold = 0.25)
+# Bleo2.markersOUTPUT <- Bleo2.markers %>% group_by(cluster) %>%  arrange(cluster, pct.2)
+write.csv(Bleo2.markers, file = paste0(Bleo2Output.path, Today.date, "_Bleo2_ALLmarkers.csv"))
+
+BDL2.markers <- FindAllMarkers(BDL2, only.pos = T, min.pct = 0.25, logfc.threshold = 0.25)
+# BDL2.markersOUTPUT <- BDL2.markers %>% group_by(cluster) %>%  arrange(cluster, pct.2) 
+write.csv(BDL2.markers, file = paste0(BDL2Output.path, Today.date, "_BDL2_ALLmarkers.csv"))
+
+CCl4.markers <- FindAllMarkers(CCl4, only.pos = T, min.pct = 0.25, logfc.threshold = 0.25)
+# CCl4.markersOUTPUT <- CCl4.markers %>% group_by(cluster) %>%  arrange(cluster, pct.2) 
+write.csv(CCl4.markers, file = paste0(CCl4Output.path, Today.date, "_CCl4_ALLmarkers.csv"))
+```
+# BDL re-annotation (obsolete as on another script)
+```{r}
+# Run Re-annotated BDL
+### cell type annotation ###
+
+```
+# Annotate marker gene lists
+```{R}
+
+
+#Load stuff
+mA5 <- readRDS(paste0(mA5.path, Today.date, "_mA5_UMAP.RDS"))
+Bleo2 <- readRDS(paste0(Bleo2.path, Today.date, "_Bleo2_UMAP.RDS"))
+BDL2 <- readRDS(paste0(BDL2.path, Today.date, "_BDL2_UMAP.RDS"))
+CCl4 <- readRDS(paste0(CCl4.path, Today.date, "_CCl4_UMAP.RDS"))
+
+mA5_cleaned <- readRDS(paste0(mA5.path, Today.date, "_mA5_CLEANED.RDS"))
+
+Bleo2_cleaned <- readRDS(paste0(Bleo2.path, Today.date, "_Bleo2_CLEANED.RDS"))
+
+BDL2_cleaned <- subset(BDL2, subset = lineage != "Doublet")
+saveRDS(BDL2_cleaned, file = paste0(BDL2Output.path, Today.date, "_BDL2_CLEANED.RDS"))
+mA5
+CCl4_cleaned  <- readRDS(paste0(CCl4.path, Today.date, "_CCl4_CLEANED.RDS"))
+
+
+
+
+#Annotate markers
+
+# map_Celltype <- function(row){
+#   cluster <- row[7]
+#   cluster <- as.numeric(cluster) + 1
+#   print(cluster)
+#   Cell.type <- annotate$Cell.type[cluster]
+#   print(Cell.type)
+#   return(Cell.type)
+# }
+# 
+# map_Lineage <- function(row){
+#   cluster <- row[7]
+#   cluster <- as.numeric(cluster) + 1
+#   lineage <- annotate$lineage[cluster]
+#   return(lineage)
+# }
+
+annotate <- read.table(file = paste0(mA5.path,"mA5_Annotations",".csv"), header = T, sep = ",", row.names = 1)
+mA5.markers <- read.csv(paste0(mA5Output.path, Today.date, "_mA5_ALLmarkers.csv"))
+mA5.markers <- data.frame(mA5.markers)
+mA5.markers$Cell.type <- apply(X = mA5.markers,1, FUN = map_Celltype)
+mA5.markers$lineage <- apply(X = mA5.markers,1, FUN = map_Lineage)
+
+annotate <- read.table(file = paste0(Bleo2.path,"Bleo2_Annotations",".csv"), header = T, sep = ",", row.names = 1)
+Bleo2.markers <- read.csv(paste0(Bleo2Output.path, Today.date, "_Bleo2_ALLmarkers.csv"))
+Bleo2.markers <- data.frame(Bleo2.markers)
+Bleo2.markers$Cell.type <- apply(X = Bleo2.markers,1, FUN = map_Celltype)
+Bleo2.markers$lineage <- apply(X = Bleo2.markers,1, FUN = map_Lineage)
+
+annotate <- read.table(file = paste0(BDL2.path,"BDL2_Annotations",".csv"), header = T, sep = ",", row.names = 1)
+BDL2.markers <- read.csv(paste0(BDL2Output.path, Today.date, "_BDL2_ALLmarkers.csv"))
+BDL2.markers <- data.frame(BDL2.markers)
+BDL2.markers$Cell.type <- apply(X = BDL2.markers,1, FUN = map_Celltype)
+BDL2.markers$lineage <- apply(X = BDL2.markers,1, FUN = map_Lineage)
+
+annotate <- read.table(file = paste0(CCl4.path,"CCl4_Annotations",".csv"), header = T, sep = ",", row.names = 1)
+CCl4.markers <- read.csv(paste0(CCl4Output.path, Today.date, "_CCl4_ALLmarkers.csv"))
+CCl4.markers <- data.frame(CCl4.markers)
+CCl4.markers$Cell.type <- apply(X = CCl4.markers,1, FUN = map_Celltype)
+CCl4.markers$lineage <- apply(X = CCl4.markers,1, FUN = map_Lineage)
+
+# Individual Visualisations GENES -> Heatmap of cluster/marker genes
+mA5_top10 <- mA5.markers  %>% group_by(cluster) %>% top_n(n = 10, wt = pct.2)
+mA5_clusterHM <- DoHeatmap(mA5, features = mA5_top10$gene) + NoLegend()
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_clusterHM.png"), plot = mA5_clusterHM, width = 45, units = "cm")
+
+mA5CLEANED_top10 <- mA5.markers %>% filter(cluster != 24 & cluster != 27 & cluster != 31) 
+mA5CLEANED_top10 <- mA5.markers %>% group_by(Cell.type) %>% top_n(n = 10, wt = pct.2)
+mA5_cellHM <- DoHeatmap(mA5_cleaned, group.by = "Cell.type", features = mA5CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_celltypeHM.png"), plot = mA5_celltypeHM, width = 45, units = "cm")
+
+mA5_lineageHM <- DoHeatmap(mA5_cleaned, group.by = "lineage", features = mA5CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5_lineage_HM.png"), plot = mA5_celltypeHM, width = 45, units = "cm")
+
+#-
+Bleo2_top10 <- Bleo2.markers %>% group_by(cluster) %>% top_n(n = 10, wt = pct.2)
+Bleo2_clusterHM <- DoHeatmap(Bleo2, features = Bleo2_top10$gene) + NoLegend()
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_clusterHM.png"), plot = Bleo2_clusterHM, width = 45, units = "cm")
+
+Bleo2CLEANED_top10 <- Bleo2.markers %>% filter(cluster != 26)  %>% group_by(Cell.type) %>% top_n(n = 10, wt = pct.2)
+
+Bleo2_cellHM <- DoHeatmap(Bleo2_cleaned, group.by = "Cell.type", features = Bleo2CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_celltypeHM.png"), plot = Bleo2_celltypeHM, width = 45, units = "cm")
+
+Bleo2_lineageHM <- DoHeatmap(Bleo2_cleaned, group.by = "lineage", features = Bleo2CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2_lineage_HM.png"), plot = Bleo2_celltypeHM, width = 45, units = "cm")
+
+#-
+
+BDL2_top10 <- BDL2.markers %>% group_by(cluster) %>% top_n(n = 10, wt = pct.2)
+BDL2_clusterHM <- DoHeatmap(BDL2, features = BDL2_top10$gene) + NoLegend()
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2_clusterHM.png"), plot = BDL2_clusterHM, width = 45, units = "cm")
+
+#-
+
+CCl4_top10 <- CCl4.markers %>% group_by(cluster) %>% top_n(n = 10, wt = pct.2)
+CCl4_clusterHM <- DoHeatmap(CCl4, features = CCl4_top10$gene) + NoLegend()
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_clusterHM.png"), plot = CCl4_clusterHM, width = 45, units = "cm")
+
+CCl4CLEANED_top10 <- CCl4.markers %>% filter(cluster != 0 & cluster != 26 & cluster != 29)  %>% group_by(Cell.type) %>% top_n(n = 10, wt = pct.2)
+CCl4_cellHM <- DoHeatmap(CCl4_cleaned, group.by = "Cell.type", features = CCl4CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_celltypeHM.png"), plot = CCl4_celltypeHM, width = 45, units = "cm")
+
+CCl4_lineageHM <- DoHeatmap(CCl4_cleaned, group.by = "lineage", features = CCl4CLEANED_top10$gene) + NoLegend()
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4_lineage_HM.png"), plot = CCl4_celltypeHM, width = 45, units = "cm")
+```
+# Proportion Vis - Cell
+```{r}
+
+# Individual Visualisations CELL -> Proportion
+### Dataset membership vary by cell type ###
+mA5$Cell.type <- factor(mA5$Cell.type, levels = c("Kidney endothelial cells",	"Kidney IFN-primed macrophage",	"Kidney macrophage 1",	"Kidney macrophage 2",	"Kidney macrophage 3",	"Kidney macrophage 4",	"Kidney proliferating macrophage 1",	"Kidney proliferating macrophage 2",	"Kidney monocyte",	"Blood Ly6Clo monocyte",	"Healthy blood Ly6Chi monoyte",	"UUO blood Ly6Chi monocyte","Basophil",	"Blood B cell 1",	"Kidney B cell",	"NK cell 1",	"NK cell 2",	"Blood neutrophils",	"Cd4+ T cell 1",	"Cd4+ T cell 2",	"CD8+ T cell 1",	"Cd8+ T cell 2",	"ILC2",	"pDC",	"CCR7+ cDC",	"Kidney cDC1",	"Kidney cDC2 1",	"Kidney cDC2 2",		"Monocyte/T cell doublet",	"Neutrophil/B cell doublet",	"Neutrophil/T cell doublet",	"Platelet",	"Proliferating"))
+
+
+Idents(mA5) <- "Names"
+mA5$Names <- factor(mA5$Names, levels = c("UUO-Kidney", "H-Kidney", "UUO-Blood", "H-Blood"))
+table(Idents(mA5))
+mA5_NameCellProp <- prop.table(table(Idents(mA5), mA5$Cell.type))
+mA5_NameCellProp
+mA5_CellProp <- as.data.frame(mA5_NameCellProp)
+
+names(mA5_CellProp)[names(mA5_CellProp) == "Var1"] <- "Dataset"
+names(mA5_CellProp)[names(mA5_CellProp) == "Var2"] <- "Cell_type"
+names(mA5_CellProp)[names(mA5_CellProp) == "Freq"] <- "Proportion"
+
+mA5_CellProp <- mA5_CellProp %>% filter(Cell_type != "Monocyte/T cell doublet" & Cell_type != "Neutrophil/T cell doublet" &Cell_type != "Neutrophil/B cell doublet")
+mA5_CellProp
+
+plot_mA5_CellPropBAR <- ggplot(mA5_CellProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = mA5.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_CellPropBAR_Celltype.png"), plot = plot_mA5_CellPropBAR, width = 30, units = "cm")
+
+plot_mA5_CellPropBAR_Dataset <- ggplot(mA5_CellProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_CellPropBAR_Dataset.png"), plot = plot_mA5_CellPropBAR_Dataset, width = 30, units = "cm")
+
+#-
+Bleo2$Cell.type <- factor(Bleo2$Cell.type, levels = c(	"Lung alveolar macrophage 1",	"Lung alveolar macrophage 2",	"Proliferating Lung Alveolar macrophage",	"Lung interstitial macrophage 1",	"Lung interstitial macrophage 2",	"Lung macrophage 3",	"Lung macrophage 4",	"Lung Monocyte","Blood IFN-primed Ly6Chi Monocyte",	"Blood Ly6Chi Monocyte",	"Blood Ly6Clo Monocyte 1",	"Blood Ly6Clo Monocyte 2",	"Lcn2+ Monocyte",	 "Basophil",	"Blood B cell 1",	"Blood B cell 2",	"Lung B Cell 1",	"Blood CD4+ T cell 2",	"Blood CD8+ T cell",	"Cd4+ T cell 1",	"CD8+ T cell 2",	"Lung CD4+ T cell 2",	"Lung CD8+ T cell",	"Proliferating T cell",	"ILC2",	"NK cell 1",	"CCR7+ cDC",	"cDC1",	"cDC2",	"pDC",	"Proliferating cDC",	"Lung endothelial cells",	"T cell/B cell doublet"))
+
+Bleo2$Names <- factor(Bleo2$Names, levels = c("Bleo-Lung", "H-Lung", "Bleo-Blood", "H-Blood"))
+
+Idents(Bleo2) <- "Names"
+table(Idents(Bleo2))
+Bleo2_NameCellProp <- prop.table(table(Idents(Bleo2), Bleo2$Cell.type))
+Bleo2_NameCellProp
+Bleo2_CellProp <- as.data.frame(Bleo2_NameCellProp)
+
+names(Bleo2_CellProp)[names(Bleo2_CellProp) == "Var1"] <- "Dataset"
+names(Bleo2_CellProp)[names(Bleo2_CellProp) == "Var2"] <- "Cell_type"
+names(Bleo2_CellProp)[names(Bleo2_CellProp) == "Freq"] <- "Proportion"
+
+Bleo2_CellProp <- Bleo2_CellProp %>% filter(Cell_type != "T cell/B cell doublet")
+Bleo2_CellProp
+
+plot_Bleo2_CellPropBAR <- ggplot(Bleo2_CellProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = Bleo2.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_CellPropBAR_Celltype.png"), plot = plot_Bleo2_CellPropBAR, width = 30, units = "cm")
+
+plot_Bleo2_CellPropBAR_Dataset <- ggplot(Bleo2_CellProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_CellPropBAR_Dataset.png"), plot = plot_Bleo2_CellPropBAR_Dataset, width = 30, units = "cm")
+
+#-
+BDL2$Cell.type <- factor(BDL2$Cell.type, levels = c("Liver Kupffer Cell 1",	"Liver Kupffer Cell 2",	"Liver macrophage 1",	"Liver macrophage 2",	"Liver macrophage 3",	"Liver macrophage 4",	"Liver macrophage 5",	"Blood IFN-primed Ly6Chi monocyte",	"Blood Ly6Clo monocyte 1",	"Blood Ly6Clo monocyte 2",	"Healthy Blood Ly6Chi monocyte 1",	"Healthy Blood Ly6Chi monocyte 2",	"B cell 1",	"B cell 2",	"B cell 3",	"Basophil",	"Cd4+ T cell 1",	"CD8+ T cell 1",	"T cell 2",	"Neutrophil 1",	"Neutrophil 2",	"NK cell 1",	"NK cell 2",	"pDC",	"cDC1",	"cDC2",	"Proliferating",	"Monocyte/B cell doublet1",	"Monocyte/B cell doublet 2",	"Monocyte/T cell doublet",	"Platelet 1",	"Platelet 2",	"Liver Endothelial Cells"))
+
+BDL2$Names <- factor(BDL2$Names, levels = c("BDL-Liver-A", "BDL-Liver-B", "H-Liver-A", "H-Liver-B", "BDL-Blood-A", "BDL-Blood-B", "H-Blood-A", "H-Blood-B"))
+
+Idents(BDL2) <- "Names"
+table(Idents(BDL2))
+BDL2_NameCellProp <- prop.table(table(Idents(BDL2), BDL2$Cell.type))
+BDL2_NameCellProp
+BDL2_CellProp <- as.data.frame(BDL2_NameCellProp)
+
+names(BDL2_CellProp)[names(BDL2_CellProp) == "Var1"] <- "Dataset"
+names(BDL2_CellProp)[names(BDL2_CellProp) == "Var2"] <- "Cell_type"
+names(BDL2_CellProp)[names(BDL2_CellProp) == "Freq"] <- "Proportion"
+
+BDL2_CellProp <- BDL2_CellProp %>% filter(Cell_type != 	"Monocyte/B cell doublet1" &	Cell_type != 	"Monocyte/B cell doublet 2" &	Cell_type != 	"Monocyte/T cell doublet")
+BDL2_CellProp
+
+plot_BDL2_CellPropBAR <- ggplot(BDL2_CellProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = BDL2.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_CellPropBAR_Celltype.png"), plot = plot_BDL2_CellPropBAR, width = 30, units = "cm")
+
+plot_BDL2_CellPropBAR_Dataset <- ggplot(BDL2_CellProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_CellPropBAR_Dataset.png"), plot = plot_BDL2_CellPropBAR_Dataset, width = 30, units = "cm")
+
+#-
+
+CCl4$Cell.type <- factor(CCl4$Cell.type, levels = c("Blood IFN-primed Ly6Chi monocyte","Blood Ly6Clo monocyte","CCl4 Blood Ly6Chi monocyte 1","CCl4 Blood Ly6Chi monocyte 2","CCl4 Blood Ly6Chi monocyte 3","CCl4 Blood Ly6Clo monocyte","Healthy Blood Ly6Chi monocyte","Liver monocyte","Liver Kupffer Cell 1","CCl4 Liver Kupffer Cell 2","Liver macrophage 1","Cd4+ T cell 1","CD8+ T cell 1","CD8+ T cell 2","B cell 1","B cell 2","B cell 3","Basophil","Eosinophil","Neutrophil","NK cell 1","NK cell 2","Liver CCR7+ cDC","cDC1","cDC2","pDC","Liver Endothelial Cells","Proliferating","Macrophage/endothelial Doublet","Monocyte/T cell doublet","Red blood cell/myeloid doublet"))
+
+CCl4$Names <- factor(CCl4$Names, levels = c("CCl4-Liver", "H-Liver", "CCl4-Blood", "H-Blood"))
+
+Idents(CCl4) <- "Names"
+table(Idents(CCl4))
+CCl4_NameCellProp <- prop.table(table(Idents(CCl4), CCl4$Cell.type))
+CCl4_NameCellProp
+CCl4_CellProp <- as.data.frame(CCl4_NameCellProp)
+
+names(CCl4_CellProp)[names(CCl4_CellProp) == "Var1"] <- "Dataset"
+names(CCl4_CellProp)[names(CCl4_CellProp) == "Var2"] <- "Cell_type"
+names(CCl4_CellProp)[names(CCl4_CellProp) == "Freq"] <- "Proportion"
+
+CCl4_CellProp <- CCl4_CellProp %>% filter(Cell_type != "Monocyte/T cell doublet" & Cell_type != "Red blood cell/myeloid doublet" &Cell_type != "Macrophage/endothelial Doublet")
+CCl4_CellProp
+
+plot_CCl4_CellPropBAR <- ggplot(CCl4_CellProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = CCl4.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_CellPropBAR_Celltype.png"), plot = plot_CCl4_CellPropBAR, width = 30, units = "cm")
+
+plot_CCl4_CellPropBAR_Dataset <- ggplot(CCl4_CellProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_CellPropBAR_Dataset.png"), plot = plot_CCl4_CellPropBAR_Dataset, width = 30, units = "cm")
+
+
+### Cell type membership vary by dataset ###
+
+Idents(mA5) <- "Cell.type"
+table(Idents(mA5))
+mA5_CellNameProp <- prop.table(table(Idents(mA5), mA5$Names))
+mA5_CellNameProp
+mA5_DataProp <- as.data.frame(mA5_CellNameProp)
+
+names(mA5_DataProp)[names(mA5_DataProp) == "Var1"] <- "Cell_type"
+names(mA5_DataProp)[names(mA5_DataProp) == "Var2"] <- "Dataset"
+names(mA5_DataProp)[names(mA5_DataProp) == "Freq"] <- "Proportion"
+
+mA5_DataProp <- mA5_DataProp %>% filter(Cell_type != "Monocyte/T cell doublet" & Cell_type != "Neutrophil/T cell doublet" &Cell_type != "Neutrophil/B cell doublet")
+
+plot_mA5_DataPropBAR <- ggplot(mA5_DataProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = mA5.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_DataPropBAR_Celltype.png"), plot = plot_mA5_DataPropBAR, width = 30, units = "cm")
+
+plot_mA5_DataPropBAR_Dataset <- ggplot(mA5_DataProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_DataPropBAR_Dataset.png"), plot = plot_mA5_DataPropBAR_Dataset, width = 30, units = "cm")
+
+#- 
+
+Idents(Bleo2) <- "Cell.type"
+table(Idents(Bleo2))
+Bleo2_CellNameProp <- prop.table(table(Idents(Bleo2), Bleo2$Names))
+Bleo2_CellNameProp
+Bleo2_DataProp <- as.data.frame(Bleo2_CellNameProp)
+
+names(Bleo2_DataProp)[names(Bleo2_DataProp) == "Var1"] <- "Cell_type"
+names(Bleo2_DataProp)[names(Bleo2_DataProp) == "Var2"] <- "Dataset"
+names(Bleo2_DataProp)[names(Bleo2_DataProp) == "Freq"] <- "Proportion"
+
+Bleo2_DataProp <- Bleo2_DataProp %>% filter(Cell_type != "T cell/B cell doublet")
+
+plot_Bleo2_DataPropBAR <- ggplot(Bleo2_DataProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = Bleo2.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_DataPropBAR_Celltype.png"), plot = plot_Bleo2_DataPropBAR, width = 30, units = "cm")
+
+plot_Bleo2_DataPropBAR_Dataset <- ggplot(Bleo2_DataProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_DataPropBAR_Dataset.png"), plot = plot_Bleo2_DataPropBAR_Dataset, width = 30, units = "cm")
+
+#- 
+
+Idents(BDL2) <- "Cell.type"
+table(Idents(BDL2))
+BDL2_CellNameProp <- prop.table(table(Idents(BDL2), BDL2$Names))
+BDL2_CellNameProp
+BDL2_DataProp <- as.data.frame(BDL2_CellNameProp)
+
+names(BDL2_DataProp)[names(BDL2_DataProp) == "Var1"] <- "Cell_type"
+names(BDL2_DataProp)[names(BDL2_DataProp) == "Var2"] <- "Dataset"
+names(BDL2_DataProp)[names(BDL2_DataProp) == "Freq"] <- "Proportion"
+
+BDL2_DataProp <- BDL2_DataProp %>% filter(Cell_type != "Monocyte/B cell doublet1" &	Cell_type != 	"Monocyte/B cell doublet 2" &	Cell_type != 	"Monocyte/T cell doublet")
+
+plot_BDL2_DataPropBAR <- ggplot(BDL2_DataProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = BDL2.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_DataPropBAR_Celltype.png"), plot = plot_BDL2_DataPropBAR, width = 30, units = "cm")
+
+plot_BDL2_DataPropBAR_Dataset <- ggplot(BDL2_DataProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_DataPropBAR_Dataset.png"), plot = plot_BDL2_DataPropBAR_Dataset, width = 30, units = "cm")
+
+
+#- 
+
+Idents(CCl4) <- "Cell.type"
+table(Idents(CCl4))
+CCl4_CellNameProp <- prop.table(table(Idents(CCl4), CCl4$Names))
+CCl4_CellNameProp
+CCl4_DataProp <- as.data.frame(CCl4_CellNameProp)
+
+names(CCl4_DataProp)[names(CCl4_DataProp) == "Var1"] <- "Cell_type"
+names(CCl4_DataProp)[names(CCl4_DataProp) == "Var2"] <- "Dataset"
+names(CCl4_DataProp)[names(CCl4_DataProp) == "Freq"] <- "Proportion"
+
+CCl4_DataProp <- CCl4_DataProp %>% filter(Cell_type != "Monocyte/T cell doublet" & Cell_type != "Red blood cell/myeloid doublet" &Cell_type != "Macrophage/endothelial Doublet")
+
+plot_CCl4_DataPropBAR <- ggplot(CCl4_DataProp, aes(fill=Dataset, y=Proportion, x=Cell_type)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = CCl4.colpal) + theme(axis.text.x.bottom = element_text(angle = 45, hjust = 1))
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_DataPropBAR_Celltype.png"), plot = plot_CCl4_DataPropBAR, width = 30, units = "cm")
+
+plot_CCl4_DataPropBAR_Dataset <- ggplot(CCl4_DataProp, aes(fill=Cell_type, y=Proportion, x=Dataset)) + geom_bar(position="fill", stat="identity")
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_DataPropBAR_Dataset.png"), plot = plot_CCl4_DataPropBAR_Dataset, width = 30, units = "cm")
+
+``` 
+# Proportion Vis - Lineage
+```{r}
+# Individual Visualisations LINEAGE -> Proportion
+ 
+### Dataset membership vary by lineage ###
+Idents(mA5) <- "Names"
+table(Idents(mA5))
+mA5_NameLinProp <- prop.table(table(Idents(mA5), mA5$lineage))
+mA5_LinProp <- as.data.frame(mA5_NameLinProp)
+
+names(mA5_LinProp)[names(mA5_LinProp) == "Var1"] <- "Dataset"
+names(mA5_LinProp)[names(mA5_LinProp) == "Var2"] <- "Lineage"
+names(mA5_LinProp)[names(mA5_LinProp) == "Freq"] <- "Proportion"
+
+mA5_LinProp <- mA5_LinProp %>% filter(Lineage != "Doublet")
+
+mA5_plot1 <- ggplot(mA5_LinProp, aes(fill=Dataset, y=Proportion, x=Lineage)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = mA5.colpal)
+
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_DataLinPropBAR.png"), plot = mA5_plot1, width = 30, units = "cm")
+
+mA5_plot2 <- mA5_plot1 + coord_polar(theta = "x")
+mA5_plot3 <- mA5_plot1 + coord_polar(theta = "y")
+mA5_plot1_pie <- mA5_plot2 + mA5_plot3
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_DataLinPropPIE.png"), plot = mA5_plot1_pie, width = 40, units = "cm")
+
+#- 
+Idents(Bleo2) <- "Names"
+table(Idents(Bleo2))
+Bleo2_NameLinProp <- prop.table(table(Idents(Bleo2), Bleo2$lineage))
+Bleo2_LinProp <- as.data.frame(Bleo2_NameLinProp)
+
+names(Bleo2_LinProp)[names(Bleo2_LinProp) == "Var1"] <- "Dataset"
+names(Bleo2_LinProp)[names(Bleo2_LinProp) == "Var2"] <- "Lineage"
+names(Bleo2_LinProp)[names(Bleo2_LinProp) == "Freq"] <- "Proportion"
+
+Bleo2_LinProp <- Bleo2_LinProp %>% filter(Lineage != "Doublet")
+
+Bleo2_plot1 <- ggplot(Bleo2_LinProp, aes(fill=Dataset, y=Proportion, x=Lineage)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = Bleo2.colpal)
+
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_DataLinPropBAR.png"), plot = Bleo2_plot1, width = 30, units = "cm")
+
+Bleo2_plot2 <- Bleo2_plot1 + coord_polar(theta = "x")
+Bleo2_plot3 <- Bleo2_plot1 + coord_polar(theta = "y")
+Bleo2_plot1_pie <- Bleo2_plot2 + Bleo2_plot3
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_DataLinPropPIE.png"), plot = Bleo2_plot1_pie, width = 40, units = "cm")
+
+#- 
+Idents(BDL2) <- "Names"
+table(Idents(BDL2))
+BDL2_NameLinProp <- prop.table(table(Idents(BDL2), BDL2$lineage))
+BDL2_LinProp <- as.data.frame(BDL2_NameLinProp)
+
+names(BDL2_LinProp)[names(BDL2_LinProp) == "Var1"] <- "Dataset"
+names(BDL2_LinProp)[names(BDL2_LinProp) == "Var2"] <- "Lineage"
+names(BDL2_LinProp)[names(BDL2_LinProp) == "Freq"] <- "Proportion"
+
+BDL2_LinProp <- BDL2_LinProp %>% filter(Lineage != "Doublet")
+
+BDL2_plot1 <- ggplot(BDL2_LinProp, aes(fill=Dataset, y=Proportion, x=Lineage)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = BDL2.colpal)
+
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_DataLinPropBAR.png"), plot = BDL2_plot1, width = 30, units = "cm")
+
+BDL2_plot2 <- BDL2_plot1 + coord_polar(theta = "x")
+BDL2_plot3 <- BDL2_plot1 + coord_polar(theta = "y")
+BDL2_plot1_pie <- BDL2_plot2 + BDL2_plot3
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_DataLinPropPIE.png"), plot = BDL2_plot1_pie, width = 40, units = "cm")
+
+#-
+
+Idents(CCl4) <- "Names"
+table(Idents(CCl4))
+CCl4_NameLinProp <- prop.table(table(Idents(CCl4), CCl4$lineage))
+CCl4_LinProp <- as.data.frame(CCl4_NameLinProp)
+
+names(CCl4_LinProp)[names(CCl4_LinProp) == "Var1"] <- "Dataset"
+names(CCl4_LinProp)[names(CCl4_LinProp) == "Var2"] <- "Lineage"
+names(CCl4_LinProp)[names(CCl4_LinProp) == "Freq"] <- "Proportion"
+
+CCl4_LinProp <- CCl4_LinProp %>% filter(Lineage != "Doublet")
+
+CCl4_plot1 <- ggplot(CCl4_LinProp, aes(fill=Dataset, y=Proportion, x=Lineage)) + geom_bar(position="fill", stat="identity") + scale_fill_manual(values = CCl4.colpal)
+
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_DataLinPropBAR.png"), plot = CCl4_plot1, width = 30, units = "cm")
+
+CCl4_plot2 <- CCl4_plot1 + coord_polar(theta = "x")
+CCl4_plot3 <- CCl4_plot1 + coord_polar(theta = "y")
+CCl4_plot1_pie <- CCl4_plot2 + CCl4_plot3
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_DataLinPropPIE.png"), plot = CCl4_plot1_pie, width = 40, units = "cm")
+### Lineage membership vary by dataset ###
+
+Idents(mA5) <- "lineage"
+table(Idents(mA5))
+mA5_LinNameProp <- prop.table(table(Idents(mA5), mA5$Names))
+mA5_LinNameProp <- as.data.frame(mA5_LinNameProp)
+
+names(mA5_LinNameProp)[names(mA5_LinNameProp) == "Var1"] <- "Lineage"
+names(mA5_LinNameProp)[names(mA5_LinNameProp) == "Var2"] <- "Dataset"
+names(mA5_LinNameProp)[names(mA5_LinNameProp) == "Freq"] <- "Proportion"
+
+mA5_LinNameProp <- mA5_LinNameProp %>% filter(Lineage != "Doublet")
+
+plot_LinNameBAR <- ggplot(mA5_LinNameProp, aes(fill=Lineage, y=Proportion, x=Dataset)) + geom_bar(position ="fill", stat="identity")
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_LinDataPropBAR.png"), plot = plot_LinNameBAR, width = 30, units = "cm")
+
+plotLinNamePIE1 <- plot_LinNameBAR + coord_polar(theta = "x")
+plotLinNamePIE2 <- plot_LinNameBAR + coord_polar(theta = "y") 
+plot_LinNamePIE <- plotLinNamePIE1 + plotLinNamePIE2
+ggsave(filename = paste0(mA5Output.path, Today.date, "_mA5CLEANED_LinDataPropPIE.png"), plot = plot_LinNamePIE, width = 45, units = "cm")
+
+#- 
+Idents(Bleo2) <- "lineage"
+table(Idents(Bleo2))
+Bleo2_LinNameProp <- prop.table(table(Idents(Bleo2), Bleo2$Names))
+Bleo2_LinNameProp <- as.data.frame(Bleo2_LinNameProp)
+
+names(Bleo2_LinNameProp)[names(Bleo2_LinNameProp) == "Var1"] <- "Lineage"
+names(Bleo2_LinNameProp)[names(Bleo2_LinNameProp) == "Var2"] <- "Dataset"
+names(Bleo2_LinNameProp)[names(Bleo2_LinNameProp) == "Freq"] <- "Proportion"
+
+Bleo2_LinNameProp <- Bleo2_LinNameProp %>% filter(Lineage != "Doublet")
+
+plot_LinNameBAR <- ggplot(Bleo2_LinNameProp, aes(fill=Lineage, y=Proportion, x=Dataset)) + geom_bar(position ="fill", stat="identity")
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_LinDataPropBAR.png"), plot = plot_LinNameBAR, width = 30, units = "cm")
+
+plotLinNamePIE1 <- plot_LinNameBAR + coord_polar(theta = "x")
+plotLinNamePIE2 <- plot_LinNameBAR + coord_polar(theta = "y") 
+plot_LinNamePIE <- plotLinNamePIE1 + plotLinNamePIE2
+ggsave(filename = paste0(Bleo2Output.path, Today.date, "_Bleo2CLEANED_LinDataPropPIE.png"), plot = plot_LinNamePIE, width = 45, units = "cm")
+
+#-
+Idents(BDL2) <- "lineage"
+table(Idents(BDL2))
+BDL2_LinNameProp <- prop.table(table(Idents(BDL2), BDL2$Names))
+BDL2_LinNameProp <- as.data.frame(BDL2_LinNameProp)
+
+names(BDL2_LinNameProp)[names(BDL2_LinNameProp) == "Var1"] <- "Lineage"
+names(BDL2_LinNameProp)[names(BDL2_LinNameProp) == "Var2"] <- "Dataset"
+names(BDL2_LinNameProp)[names(BDL2_LinNameProp) == "Freq"] <- "Proportion"
+
+BDL2_LinNameProp <- BDL2_LinNameProp %>% filter(Lineage != "Doublet")
+
+plot_LinNameBAR <- ggplot(BDL2_LinNameProp, aes(fill=Lineage, y=Proportion, x=Dataset)) + geom_bar(position ="fill", stat="identity")
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_LinDataPropBAR.png"), plot = plot_LinNameBAR, width = 30, units = "cm")
+
+plotLinNamePIE1 <- plot_LinNameBAR + coord_polar(theta = "x")
+plotLinNamePIE2 <- plot_LinNameBAR + coord_polar(theta = "y") 
+plot_LinNamePIE <- plotLinNamePIE1 + plotLinNamePIE2
+ggsave(filename = paste0(BDL2Output.path, Today.date, "_BDL2CLEANED_LinDataPropPIE.png"), plot = plot_LinNamePIE, width = 45, units = "cm")
+
+#-
+Idents(CCl4) <- "lineage"
+table(Idents(CCl4))
+CCl4_LinNameProp <- prop.table(table(Idents(CCl4), CCl4$Names))
+CCl4_LinNameProp <- as.data.frame(CCl4_LinNameProp)
+
+names(CCl4_LinNameProp)[names(CCl4_LinNameProp) == "Var1"] <- "Lineage"
+names(CCl4_LinNameProp)[names(CCl4_LinNameProp) == "Var2"] <- "Dataset"
+names(CCl4_LinNameProp)[names(CCl4_LinNameProp) == "Freq"] <- "Proportion"
+
+CCl4_LinNameProp <- CCl4_LinNameProp %>% filter(Lineage != "Doublet")
+
+plot_LinNameBAR <- ggplot(CCl4_LinNameProp, aes(fill=Lineage, y=Proportion, x=Dataset)) + geom_bar(position ="fill", stat="identity")
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_LinDataPropBAR.png"), plot = plot_LinNameBAR, width = 30, units = "cm")
+
+plotLinNamePIE1 <- plot_LinNameBAR + coord_polar(theta = "x")
+plotLinNamePIE2 <- plot_LinNameBAR + coord_polar(theta = "y") 
+plot_LinNamePIE <- plotLinNamePIE1 + plotLinNamePIE2
+ggsave(filename = paste0(CCl4Output.path, Today.date, "_CCl4CLEANED_LinDataPropPIE.png"), plot = plot_LinNamePIE, width = 45, units = "cm")
+
+
+```
+# Remove Duplicates
+```{r}
+mA5_harmony <- subset(mA5_cleaned, subset = Duplicate == 0)
+Bleo2_harmony <- subset(Bleo2_cleaned, subset = Duplicate == 0)
+BDL2_harmony <- subset(BDL2_cleaned, subset = Duplicate == 0)
+CCl4_harmony <- subset(CCl4_cleaned, subset = Duplicate == 0)
+
+#```
+
+# Merge + Save
+#```{r}
+harTest2 <- merge(x = mA5_harmony, y = c(Bleo2_harmony, BDL2_harmony, CCl4_harmony), add.cell.ids = c("Kidney_UUO", "Lung_Bleo", "Liver-BDL2", "Liver-CCl4"), project = "harTest2")
+harmony.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Merge/"
+saveRDS(harTest2, file = paste0(harmony.path, "120820_preRH_Test2.RDS"))
+
+#```
+
+# HVG 
+#```{r}y6Chi monocyte 1",	"Healthy Blood Ly6Chi monocyte 2",	"B cell 1",	"B cell 2",	"B cell 3",	"Basophil",	"Cd4+ T cell 1",	"CD8+ T cell 1",	"T cell 2",	"Neutrophil 1",	"Neutrophil 2",	"NK cell 1",	"NK cell 2",	"pDC",	"cDC1",	"cDC2",	"Proliferating",	"Monocyte/B cell doublet1",	"Monocyte/B cell doublet 2",	"Monocyte/T cell doublet",	"Platelet 1",	"Platelet 2",	"Liver Endothelial Cells"))
+mA5_harmony <- FindVariableFeatures(mA5_harmony, selection.method = "vst", nfeatures = 5000)
+Bleo2_harmony <- FindVariableFeatures(Bleo2_harmony, selection.method = "vst", nfeatures = 5000)
+BDL2_harmony <- FindVariableFeatures(BDL2_harmony, selection.method = "vst", nfeatures = 5000)
+CCl4_harmony <- FindVariableFeatures(CCl4_harmony, selection.method = "vst", nfeatures = 5000)
+
+Test2_HVG <- intersect(VariableFeatures(mA5_harmony), intersect(VariableFeatures(Bleo2_harmony), intersect(VariableFeatures(BDL2), VariableFeatures(CCl4_harmony))))
+VariableFeatures(harTest2) <- Test2_HVG
+
+#```
+
+# pre-harmony + plots
+#```{r}
+
+harTest2 <- ScaleData(harTest2)
+harTest2 <- RunPCA(harTest2, features = VariableFeatures(object = harTest2))
+
+plot_preRH_Elbow <- ElbowPlot(harTest2, ndims = 50, reduction = "pca")
+ggsave(filename = paste0(harmony.path, "120820_Test2_Elbow_preRH.png"), plot = plot_preRH_Elbow, width = 30, units = "cm")
+
+plot_preRH_Dim <- DimPlot(object = harTest2, reduction = "pca", group.by = "Names")
+ggsave(filename = paste0(harmony.path, "120820_Test2_DimPlot_preRH.png"), plot = plot_preRH_Dim, width = 30, units = "cm")
+
+#```
+
+# Harmony + Save
+#```{r}
+
+harTest2 <- RunHarmony(harTest2, group.by.vars = "orig.ident", dims = 1:50)
+saveRDS(harTest2, file = paste0(harmony.path, "120820_HarmonyTest2.RDS"))
+#```
+
+# post-harmony plots
+
+# UMAP + plot group.by and split.by
+#```{r}
+harTest2  <- FindNeighbors(harTest2, reduction = "harmony", dims = 1:50)
+harTest2 <- FindClusters(harTest2, reduction = "harmony", resolution = 1.00)
+harTest2_UMAP <- RunUMAP(harTest2, reduction = "harmony", dims = 1:50)
+saveRDS(harTest2_UMAP, file = paste0(harmony.path, "120820_HarmonyTest2_UMAP.RDS"))
+
+har_UMAP_OGID <- DimPlot(harTest2_UMAP, reduction = "UMAP", group.by = "Names")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_OGID.png"), plot = har_UMAP_cluster, width = 30, units = "cm")
+
+har_UMAP_OGID_split <- DimPlot(harTest2_UMAP, reduction = "UMAP", group.by = "Names", split.by = "Names")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_OGIDsplit.png"), plot = har_UMAP_OGID_split, width = 30, units = "cm")
+
+har_UMAP_cl <- DimPlot(harTest2_UMAP, reduction = "UMAP")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_CL.png"), plot = har_UMAP_cl, width = 30, units = "cm")
+
+har_UMAP_cl_split <- DimPlot(harTest2_UMAP, reduction = "UMAP", split.by = "Names")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_CLsplit.png"), plot = har_UMAP_cl_split, width = 30, units = "cm")
+
+har_UMAP_lin <- DimPlot(harTest2_UMAP, reduction = "UMAP", group.by = "lineage")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_LIN.png"), plot = har_UMAP_lin, width = 30, units = "cm")
+
+har_UMAP_lin_split <- DimPlot(harTest2_UMAP, reduction = "UMAP", group.by = "lineage", split.by = "Names")
+ggsave(filename = paste0(harmony.path, "120820_Test2_UMAP_LINsplit.png"), plot = har_UMAP_lin_split, width = 30, units = "cm")
+
+# 
+# ```
+# 
+# # Marker Genes + Feature Plots
+# ```{r}
+harmony.markers <- FindAllMarkers(harTest2, only.pos = T, min.pct = 0.25, logfc.threshold = 0.25)
+write.csv(harmony.markers, file = paste0(harmony.path, "120820_Test2_ALLmarkers.csv"))
+harmony.markersOUTPUT <- harmony.markers %>% group_by(cluster) %>% arrange(cluster, pct.2)
+write.csv(harmony.markersOUTPUT, file = paste0(harmony.path, "120820_Test2_biomarkers.csv"))
+```
+
+
+# Cluster + Annotate + Save
+

@@ -1,0 +1,94 @@
+ ---
+title: "R Notebook"
+author: mjdioli
+date: 18/08/2020
+output: html_document
+---
+```{r}
+library(uwot)
+library(Seurat)
+library(dplyr)
+library(patchwork)
+library(ggplot2)
+library(RColorBrewer)
+library(harmony)
+library(cowplot)
+library(data.table)
+
+mA5.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Kidney-UUO/"
+Bleo2.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Lung-Bleo/"
+BDL2.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-BDL/"
+CCl4.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Liver-CCl4/"
+
+harTest2.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Merge/"
+harTest3.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Merge2/"
+harTest3Output.path <- "/home/mjdioli/Documents/Ingrid/Harmony_Test2_SSH/Merge2/Outputs/"
+
+Today.date <- "070820"
+# Load data
+
+mA5_cleaned <- readRDS(paste0(mA5.path, Today.date, "_mA5_CLEANED.RDS"))
+
+Bleo2_cleaned <- readRDS(paste0(Bleo2.path, Today.date, "_Bleo2_CLEANED.RDS"))
+
+BDL2_cleaned <- readRDS(paste0(BDL2.path, Today.date, "_BDL2_CLEANED.RDS"))
+
+CCl4_cleaned  <- readRDS(paste0(CCl4.path, Today.date, "_CCl4_CLEANED.RDS"))
+
+mA5_harmony <- subset(mA5_cleaned, subset = Duplicate == 0)
+Bleo2_harmony <- subset(Bleo2_cleaned, subset = Duplicate == 0)
+BDL2_harmony <- subset(BDL2_cleaned, subset = Duplicate == 0)
+CCl4_harmony <- subset(CCl4_cleaned, subset = Duplicate == 0)
+
+# HVG
+mA5_harmony <- FindVariableFeatures(mA5_harmony, selection.method = "vst", nfeatures = 5000)
+Bleo2_harmony <- FindVariableFeatures(Bleo2_harmony, selection.method = "vst", nfeatures = 5000)
+BDL2_harmony <- FindVariableFeatures(BDL2_harmony, selection.method = "vst", nfeatures = 5000)
+CCl4_harmony <- FindVariableFeatures(CCl4_harmony, selection.method = "vst", nfeatures = 5000)
+
+harTest3 <- merge(x = mA5_harmony, y = c(Bleo2_harmony, BDL2_harmony, CCl4_harmony), add.cell.ids = c("Kidney_UUO", "Lung_Bleo", "Liver-BDL2", "Liver-CCl4"), project = "harTest3")
+saveRDS(harTest3, file = paste0(harTest3.path, "180820_preRH_Test3.RDS"))
+
+
+Test3_HVG <- intersect(VariableFeatures(mA5_harmony), intersect(VariableFeatures(Bleo2_harmony), intersect(VariableFeatures(BDL2_harmony), VariableFeatures(CCl4_harmony))))
+VariableFeatures(harTest3) <- Test3_HVG
+
+harTest3 <- ScaleData(harTest3)
+harTest3 <- RunPCA(harTest3, features = VariableFeatures(object = harTest3))
+
+
+
+harTest3 <- RunHarmony(harTest3, group.by.vars = "Tissue")
+saveRDS(harTest3, file = paste0(harTest3.path, "180820_Harmony_Test3.RDS"))
+
+harTest3  <- FindNeighbors(harTest3, reduction = "harmony", dims = 1:50)
+harTest3 <- FindClusters(harTest3, reduction = "harmony", resolution = 1.00)
+harTest3_UMAP <- RunUMAP(harTest3, reduction = "harmony", dims = 1:50)
+saveRDS(harTest3_UMAP, file = paste0(harTest3.path, "180820_HarmonyTest3_UMAP.RDS"))
+
+#Plots
+har_UMAP_OGID <- DimPlot(harTest3_UMAP, reduction = "umap", group.by = "Names")
+ggsave(filename = paste0(harTest3Output.path, "180820_Test2_UMAP_OGID.png"), plot = har_UMAP_OGID, width = 30, units = "cm")
+
+har_UMAP_OGID_split <- DimPlot(harTest3_UMAP, reduction = "umap", group.by = "Names", split.by = "Experiment")
+ggsave(filename = paste0(harTest3Output.path, "180820_Test3_UMAP_OGIDsplitExp.png"), plot = har_UMAP_OGID_split, width = 50, height = 15,  units = "cm")
+
+har_UMAP_cl <- DimPlot(harTest3_UMAP, reduction = "umap", label = T)
+ggsave(filename = paste0(harTest3Output.path, "180820_Test2_UMAP_CL.png"), plot = har_UMAP_cl, width = 30, units = "cm")
+
+har_UMAP_cl_split <- DimPlot(harTest3_UMAP, reduction = "umap", split.by = "Condition", label = T) + NoLegend()
+ggsave(filename = paste0(harTest3Output.path, "180820_Test2_UMAP_CLsplitCond.png"), plot = har_UMAP_cl_split, width = 40, units = "cm")
+
+har_UMAP_cl_split <- DimPlot(harTest3_UMAP, reduction = "umap", split.by = "Tissue", label = T) + NoLegend()
+ggsave(filename = paste0(harTest3Output.path, "180820_Test3_UMAP_CLsplitTiss.png"), plot = har_UMAP_cl_split, width = 50, height = 15,  units = "cm")
+
+har_UMAP_cl_split <- DimPlot(harTest3_UMAP, reduction = "umap", split.by = "Injury", label = T) + NoLegend()
+ggsave(filename = paste0(harTest3Output.path, "180820_Test3_UMAP_CLsplitInj.png"), plot = har_UMAP_cl_split, width = 50, height = 15,  units = "cm")
+
+har_UMAP_lin <- DimPlot(harTest3_UMAP, reduction = "umap", group.by = "lineage")
+ggsave(filename = paste0(harTest3Output.path, "180820_Test3_UMAP_LIN.png"), plot = har_UMAP_lin, width = 30, units = "cm")
+
+har_UMAP_lin_split <- DimPlot(harTest3_UMAP, reduction = "umap", group.by = "lineage", split.by = "Condition")
+ggsave(filename = paste0(harTest3Output.path, "180820_Test3_UMAP_LINsplitCond.png"), plot = har_UMAP_lin_split, width = 40, units = "cm")
+
+```
