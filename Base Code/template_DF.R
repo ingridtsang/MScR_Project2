@@ -1,3 +1,7 @@
+### Before starting, Command-F "dataset" and replace with actual name of your dataset. Command-F "[filename]" and change filename of outputs manually. Do the same with anything in square brackets [] under "Set variables".###
+
+
+#Load necesssary packages
 library(DoubletFinder)
 library(uwot)
 library(Seurat)
@@ -7,15 +11,12 @@ library(ggplot2)
 library(RColorBrewer)
 
 
-
+#Set variables
 path = "[dataset_path]"
-
 dataset.data <- Read10X(data.dir = path)
 dataset <- CreateSeuratObject(counts = dataset.data, project = "[dataset_name]")
 
-
 # Set %mt
-
 dataset[["percent.mt"]] <- PercentageFeatureSet(dataset, pattern = "^mt-")
 
 # LogNorm, FS, Scale
@@ -41,7 +42,7 @@ sweep.stats_dataset_UMAP <- summarizeSweep(sweep.res.list_dataset_UMAP, GT = FAL
 bcmvn_dataset_UMAP <- find.pK(sweep.stats_dataset_UMAP)
 
 #-----------save dataset_UMAP--------------------
-
+saveRDS(dataset_UMAP, file = "[filename].RDS")
 # Doublet Finder
 dataset_rmD <- doubletFinder_v3(dataset_UMAP, PCs = 1:50, pN = 0.25, pK = 0.06, nExp = dataset_nExp_poi, reuse.pANN = FALSE, sct = FALSE)
 
@@ -52,7 +53,6 @@ ggsave(filename = "[filename].png", width = 30, units = "cm")
 # Remove doublets input dataset_nExp_poi by hand
 code = paste0("DF.classifications_0.25_0.06_", dataset_nExp_poi) #test to see if this works
 dataset_rmD <- subset(dataset_rmD, subset = code =="Singlet")
-saveRDS(dataset_rmD, file = "[filename].RDS")
 
 # Make graphs - OG
 plot_dataset_OG <- DimPlot(dataset_UMAP, reduction = "umap")
@@ -63,3 +63,4 @@ plot_dataset_rmD_UMAP <- DimPlot(dataset_rmD, reduction = "umap")
 ggsave(filename = "[filename].jpeg", plot = plot_dataset_rmD_UMAP, width = 30, units = "cm")
 
 #-----------save dataset_rmD--------------------
+saveRDS(dataset_rmD, file = "[filename].RDS")
