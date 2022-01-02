@@ -1,4 +1,4 @@
-### Before starting, Command-F "dataset" and replace with actual name of your dataset. Command-F "[filename]" and change filename of outputs manually. Do the same with anything in square brackets [] under "Set variables".###
+### Before starting, Command-F "dataset" and replace with actual name of your dataset. Command-F "[filename]" and change filename of outputs manually. Do the same with anything in square brackets [] under "Set variables". ### 
 
 
 #Load necesssary packages
