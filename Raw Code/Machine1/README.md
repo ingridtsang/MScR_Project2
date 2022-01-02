@@ -1,1 +1,1 @@
-Raw Code Files from a machine used later on in the project. Mostly covers Harmony integration to compare and contrast different datasets and the making of more complex graphs for individual datasets
+Machine 1 covers the latter half of the project, such as Harmony integration to compare/contrast different datasets and the making of more complex graphs for individual datasets
